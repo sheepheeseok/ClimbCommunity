@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: climbcommunity-frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: climbcommunity-frontend
+  template:
+    metadata:
+      labels:
+        app: climbcommunity-frontend
+    spec:
+      containers:
+        - name: climbcommunity-frontend
+          image: yangheeseok/climbcommunity-frontend:latest
+          ports:
+            - containerPort: 5173
