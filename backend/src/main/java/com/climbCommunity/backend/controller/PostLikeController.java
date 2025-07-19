@@ -22,8 +22,7 @@ public class PostLikeController {
 
     @PostMapping
     public ResponseEntity<PostLikeResponseDto> likePost(@RequestBody PostLikeRequestDto dto) {
-        Post post = postService.getPostById(dto.getPostId())
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+        Post post = postService.getPostById(dto.getPostId());
         User user = userService.getUserById(dto.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

@@ -25,5 +25,10 @@ public class ReviewLike {
     @JoinColumn(name = "review_id", nullable = false)
     private Review review;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    private void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

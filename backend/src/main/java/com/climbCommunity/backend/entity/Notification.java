@@ -28,8 +28,14 @@ public class Notification {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    private Boolean isRead = false;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Boolean isRead;
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    private void onCreate() {
+        this.isRead = false;
+        this.createdAt = LocalDateTime.now();
+    }
 
     public enum NotificationType {
         comment, like, report, group

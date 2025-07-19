@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.entity;
 
+import com.climbCommunity.backend.entity.enums.PostStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,6 +28,23 @@ public class Post {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PostStatus status;
+
+    @PrePersist
+    protected void onCreate() {
+        if (status == null) {
+            status = PostStatus.ACTIVE;
+        }
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

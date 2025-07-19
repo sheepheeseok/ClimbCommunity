@@ -1,7 +1,11 @@
 package com.climbCommunity.backend.entity;
 
+import com.climbCommunity.backend.entity.enums.Grade;
+import com.climbCommunity.backend.entity.enums.Role;
+import com.climbCommunity.backend.entity.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,9 +23,12 @@ public class User {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 50)
+    private String userId;
+
+    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false, length = 255)
@@ -29,13 +36,41 @@ public class User {
 
     private String profileImage;
 
-    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private String tel;
+
+    @Column(length = 255)
+    private String address1;
+
+    @Column(length = 255)
+    private String address2;
+
     @Column(nullable = false)
-    private Status status = Status.active;
+    @Enumerated(EnumType.STRING)
+    private Grade grade;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Status status;
 
-    public enum Status {
-        active, banned, deleted
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
+    private LocalDateTime deletedAt;
+
+    public boolean canRestore() {
+        return this.status == Status.deleted &&
+                deletedAt != null &&
+                deletedAt.isAfter(LocalDateTime.now().minusDays(30));
+    }
+
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    private void onCreate() {
+        this.grade = Grade.White;
+        this.status = Status.active;
+        this.createdAt = LocalDateTime.now();
     }
 }

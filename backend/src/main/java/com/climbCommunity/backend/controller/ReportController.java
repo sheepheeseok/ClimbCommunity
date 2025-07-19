@@ -4,6 +4,7 @@ import com.climbCommunity.backend.dto.report.ReportRequestDto;
 import com.climbCommunity.backend.dto.report.ReportResponseDto;
 import com.climbCommunity.backend.entity.Report;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.enums.TargetType;
 import com.climbCommunity.backend.service.ReportService;
 import com.climbCommunity.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class ReportController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Report report = Report.builder()
-                .targetType(Report.TargetType.valueOf(dto.getTargetType()))
+                .targetType(TargetType.valueOf(dto.getTargetType()))
                 .targetId(dto.getTargetId())
                 .user(user)
                 .reason(dto.getReason())
@@ -42,7 +43,7 @@ public class ReportController {
                 .targetId(savedReport.getTargetId())
                 .username(user.getUsername())
                 .reason(savedReport.getReason())
-                .createdAt(savedReport.getCreateAt().format(DateTimeFormatter.ISO_DATE_TIME))
+                .createdAt(savedReport.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME))
                 .build();
 
         return ResponseEntity.ok(response);

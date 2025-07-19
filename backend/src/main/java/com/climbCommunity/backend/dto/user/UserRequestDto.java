@@ -6,8 +6,14 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UserRequestDto {
+    private Long id;
+    private String userId;
     private String username;
     private String email;
     private String password;
+    private String tel;
+    private String address1;
+    private String address2;
+    private String Grade;
     private String profileImage;
 }

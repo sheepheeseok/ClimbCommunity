@@ -30,5 +30,10 @@ public class ClimbingGroup {
     private String location;
 
     private LocalDateTime eventDate;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    private void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

@@ -25,5 +25,10 @@ public class GroupMember {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private LocalDateTime joinedAt = LocalDateTime.now();
+    private LocalDateTime joinedAt;
+
+    @PrePersist
+    private void onJoin() {
+        this.joinedAt = LocalDateTime.now();
+    }
 }

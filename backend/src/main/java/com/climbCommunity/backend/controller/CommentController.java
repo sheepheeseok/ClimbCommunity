@@ -2,68 +2,114 @@ package com.climbCommunity.backend.controller;
 
 import com.climbCommunity.backend.dto.comment.CommentRequestDto;
 import com.climbCommunity.backend.dto.comment.CommentResponseDto;
-import com.climbCommunity.backend.entity.Comment;
-import com.climbCommunity.backend.entity.Post;
-import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.dto.report.ReportRequestDto;
+import com.climbCommunity.backend.entity.enums.LikeType;
 import com.climbCommunity.backend.service.CommentService;
-import com.climbCommunity.backend.service.PostService;
-import com.climbCommunity.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/comments")
+@RequestMapping("/api/posts/{postId}/comments")
 @RequiredArgsConstructor
 public class CommentController {
+
     private final CommentService commentService;
-    private final PostService postService;
-    private final UserService userService;
 
+    // 댓글 등록
     @PostMapping
-    public ResponseEntity<CommentResponseDto> createComment(@RequestBody CommentRequestDto dto) {
-        User user = userService.getUserById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Post post = postService.getPostById(dto.getPostId())
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+    public ResponseEntity<CommentResponseDto> createComment(
+            @PathVariable Long postId,
+            @RequestBody CommentRequestDto dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        Comment comment = Comment.builder()
-                .user(user)
-                .post(post)
-                .content(dto.getContent())
-                .parentComment(dto.getParentCommentId() != null ?
-                        commentService.getCommentById(dto.getParentCommentId())
-                                .orElse(null) : null)
-                .build();
-
-        Comment savedComment = commentService.saveComment(comment);
-
-        CommentResponseDto response = CommentResponseDto.builder()
-                .id(savedComment.getId())
-                .content(savedComment.getContent())
-                .username(user.getUsername())
-                .createdAt(savedComment.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME))
-                .parentCommentId(dto.getParentCommentId())
-                .build();
-
+        String userId = userDetails.getUsername();
+        CommentResponseDto response = commentService.saveComment(postId, userId, dto);
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/post/{postId")
-    public ResponseEntity<List<CommentResponseDto>> getCommentsByPost(@PathVariable Long postId) {
-        List<CommentResponseDto> comments = commentService.getCommentsByPostId(postId).stream()
-                .map(comment -> CommentResponseDto.builder()
-                        .id(comment.getId())
-                        .content(comment.getContent())
-                        .username(comment.getUser().getUsername())
-                        .createdAt(comment.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .parentCommentId(comment.getParentComment() != null ? comment.getParentComment().getId() : null )
-                        .build())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(comments);
+    // 댓글 목록 조회
+    @GetMapping
+    public ResponseEntity<Page<CommentResponseDto>> getComments(
+            @PathVariable Long postId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(commentService.getCommentTreeByPostId(postId, page, size));
+    }
+
+    // 댓글 수정
+    @PutMapping("/{commentId}")
+    public ResponseEntity<CommentResponseDto> updateComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody CommentRequestDto dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null || userDetails.getAuthorities() == null) {
+            return ResponseEntity.status(401).body(null);
+        }
+
+        String userId = userDetails.getUsername();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        CommentResponseDto response = commentService.updateComment(commentId, userId, dto, isAdmin);
+        return ResponseEntity.ok(response);
+    }
+
+    // 댓글 삭제
+    @DeleteMapping("/{commentId}")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = userDetails.getUsername();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        commentService.deleteComment(commentId, userId, isAdmin);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 댓글 신고
+    @PostMapping("/{commentId}/report")
+    public ResponseEntity<Void> reportComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody ReportRequestDto dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = userDetails.getUsername();
+        commentService.reportComment(commentId, userId, dto.getReason());
+        return ResponseEntity.ok().build();
+    }
+
+    // 좋아요 기능
+    @PostMapping("/{commentId}/like")
+    public ResponseEntity<Void> likeComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = userDetails.getUsername();
+        commentService.toogleLike(commentId, userId, LikeType.LIKE);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{commentId}/dislike")
+    public ResponseEntity<Void> dislikeComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = userDetails.getUsername();
+        commentService.toogleLike(commentId, userId, LikeType.DISLIKE);
+        return ResponseEntity.ok().build();
     }
 }

@@ -1,8 +1,8 @@
 package com.climbCommunity.backend.entity;
 
+import com.climbCommunity.backend.entity.enums.TargetType;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -31,9 +31,10 @@ public class Report {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
 
-    private LocalDateTime createAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    public enum TargetType {
-        post, comment
+    @PrePersist
+    private void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 }
