@@ -6,29 +6,29 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "group_members")
+@Table(name = "group_comment_likes",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "comment_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GroupMember {
+public class GroupCommentLike {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private ClimbingGroup group;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private LocalDateTime joinedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private GroupComment comment;
+
+    @Column(nullable = false)
+    private LocalDateTime likedAt;
 
     @PrePersist
-    private void onJoin() {
-        this.joinedAt = LocalDateTime.now();
+    public void onLike() {
+        this.likedAt = LocalDateTime.now();
     }
 }

@@ -1,12 +1,14 @@
 package com.climbCommunity.backend.entity;
 
+import com.climbCommunity.backend.entity.enums.NotificationType;
+import com.climbCommunity.backend.entity.enums.TargetType;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notification")
+@Table(name = "notifications")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,23 +23,25 @@ public class Notification {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private NotificationType type;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private TargetType targetType;
+
+    private Long targetId;
+
     private Boolean isRead;
+
     private LocalDateTime createdAt;
 
     @PrePersist
     private void onCreate() {
         this.isRead = false;
         this.createdAt = LocalDateTime.now();
-    }
-
-    public enum NotificationType {
-        comment, like, report, group
     }
 }

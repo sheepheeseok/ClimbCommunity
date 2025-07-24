@@ -44,6 +44,10 @@ public class UserPrincipal implements UserDetails {
         return true;
     }
 
+    public boolean isAdmin() {
+        return "ADMIN".equalsIgnoreCase(role);
+    }
+
     public static UserPrincipal fromEntity(User user) {
         return new UserPrincipal(
                 user.getUserId(),

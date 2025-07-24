@@ -1,6 +1,7 @@
 package com.climbCommunity.backend.dto.post;
 
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.entity.enums.Category;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,6 +13,7 @@ public class PostResponseDto {
     private Long id;
     private String title;
     private String content;
+    private Category category;
     private String username;
     private String status;
     private String createdAt;
@@ -21,6 +23,7 @@ public class PostResponseDto {
         return PostResponseDto.builder()
                 .id(post.getId())
                 .title(post.getTitle())
+                .category(post.getCategory())
                 .content(post.getContent())
                 .username(post.getUser().getUsername())
                 .status(post.getStatus().name())

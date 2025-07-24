@@ -5,50 +5,63 @@ import com.climbCommunity.backend.dto.postlike.PostLikeResponseDto;
 import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.PostLike;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.enums.NotificationType;
+import com.climbCommunity.backend.entity.enums.TargetType;
+import com.climbCommunity.backend.security.UserPrincipal;
+import com.climbCommunity.backend.service.NotificationService;
 import com.climbCommunity.backend.service.PostLikeService;
 import com.climbCommunity.backend.service.PostService;
 import com.climbCommunity.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/post-likes")
+@RequestMapping("/api/posts")
 @RequiredArgsConstructor
 public class PostLikeController {
     private final PostLikeService postLikeService;
     private final PostService postService;
-    private final UserService userService;
+    private final NotificationService notificationService;
 
-    @PostMapping
-    public ResponseEntity<PostLikeResponseDto> likePost(@RequestBody PostLikeRequestDto dto) {
-        Post post = postService.getPostById(dto.getPostId());
-        User user = userService.getUserById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<?> toggleLike(@PathVariable Long postId,
+                                        @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        System.out.println("Authorities: " + userPrincipal.getAuthorities());
 
-        if (postLikeService.hasUserLiked(dto.getPostId(), dto.getUserId())) {
-            throw new RuntimeException("User already liked this post");
+        String userId = userPrincipal.getUserId();
+
+        boolean alreadyLiked = postLikeService.hasUserLiked(userId, postId);
+        if (alreadyLiked) {
+            postLikeService.unlikePost(userId, postId);
+            return ResponseEntity.ok("좋아요 취소");
+        } else {
+            postLikeService.likePost(userId, postId);
+
+            Post post = postService.getPostById(postId);
+            if(!post.getUser().getUserId().equals(userPrincipal.getUserId())) {
+                notificationService.createNotification(
+                        post.getUser().getId(),
+                        NotificationType.LIKE,
+                        TargetType.POST,
+                        postId,
+                        userPrincipal.getUsername() + "님이 게시글을 좋아했습니다."
+                );
+            }
+            return ResponseEntity.ok("좋아요 추가");
         }
-
-        PostLike like = PostLike.builder()
-                .post(post)
-                .user(user)
-                .build();
-
-        PostLike savedLike = postLikeService.savePostLike(like);
-
-        PostLikeResponseDto response = PostLikeResponseDto.builder()
-                .id(savedLike.getId())
-                .postId(savedLike.getPost().getId())
-                .userId(savedLike.getUser().getId())
-                .build();
-
-        return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> unlikePost(@PathVariable Long id) {
-        postLikeService.deletePostLike(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/{postId}/like/count")
+    public ResponseEntity<Long> getLikeCount(@PathVariable Long postId) {
+        return ResponseEntity.ok(postLikeService.countLikes(postId));
+    }
+
+    @GetMapping("/{postId}/like/check")
+    public ResponseEntity<Boolean> hasUserLiked(@PathVariable Long postId,
+                                                @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        boolean liked = postLikeService.hasUserLiked(userPrincipal.getUserId(), postId);
+        return ResponseEntity.ok(liked);
     }
 }

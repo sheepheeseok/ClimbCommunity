@@ -1,7 +1,9 @@
 package com.climbCommunity.backend.dto.post;
 
 
+import com.climbCommunity.backend.entity.enums.Category;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,4 +19,7 @@ public class PostRequestDto {
 
     @NotBlank(message = "내용은 필수입니다.")
     private String content;
+
+    @NotNull
+    private Category category;
 }

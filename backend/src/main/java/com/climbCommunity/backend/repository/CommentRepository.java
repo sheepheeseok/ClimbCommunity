@@ -20,6 +20,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @EntityGraph(attributePaths = {"user", "parentComment", "replies"})
     List<Comment> findByPostIdAndStatus(Long postId, CommentStatus status);
 
-    Page<Comment> findByPost_IdAndStatus(Long postId, CommentStatus status, Pageable pageable);
+    Page<Comment> findByPost_IdAndStatusAndParentCommentIsNull(
+            Long postId, CommentStatus status, Pageable pageable);
     List<Comment> findByParentComment_IdAndStatus(Long parentCommentId, CommentStatus commentStatus);
 }

@@ -4,10 +4,12 @@ import com.climbCommunity.backend.dto.notification.NotificationRequestDto;
 import com.climbCommunity.backend.dto.notification.NotificationResponseDto;
 import com.climbCommunity.backend.entity.Notification;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.security.UserPrincipal;
 import com.climbCommunity.backend.service.NotificationService;
 import com.climbCommunity.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
@@ -18,46 +20,26 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
+
     private final NotificationService notificationService;
-    private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<NotificationResponseDto> createNotification(@RequestBody NotificationRequestDto dto) {
-        User user = userService.getUserById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Notification notification = Notification.builder()
-                .user(user)
-                .type(Notification.NotificationType.valueOf(dto.getType()))
-                .message(dto.getMessage())
-                .build();
-
-        Notification savedNotification = notificationService.saveNotification(notification);
-
-        NotificationResponseDto response = NotificationResponseDto.builder()
-                .id(savedNotification.getId())
-                .username(user.getUsername())
-                .type(savedNotification.getType().name())
-                .message(savedNotification.getMessage())
-                .isRead(savedNotification.getIsRead())
-                .createdAt(savedNotification.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME))
-                .build();
-
-        return ResponseEntity.ok(response);
+    @GetMapping
+    public ResponseEntity<List<NotificationResponseDto>> getUnreadNotifications(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        String userId = userPrincipal.getUserId();
+        List<NotificationResponseDto> notifications = notificationService.getUnreadNotifications(userId);
+        return ResponseEntity.ok(notifications);
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<NotificationResponseDto>> getUnreadNotifications(@PathVariable Long userId) {
-        List<NotificationResponseDto> notifications = notificationService.getUnreadNotificationsByUserId(userId).stream()
-                .map(notification -> NotificationResponseDto.builder()
-                        .id(notification.getId())
-                        .username(notification.getUser().getUsername())
-                        .type(notification.getType().name())
-                        .message(notification.getMessage())
-                        .isRead(notification.getIsRead())
-                        .createdAt(notification.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .build())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(notifications);
+    @PatchMapping("/{alertId}/read")
+    public ResponseEntity<Void> markNotificationAsRead(@PathVariable Long alertId) {
+        notificationService.markAsRead(alertId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllNotificationsAsRead(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        String userId = userPrincipal.getUserId();
+        notificationService.markAllAsRead(userId);
+        return ResponseEntity.noContent().build();
     }
 }

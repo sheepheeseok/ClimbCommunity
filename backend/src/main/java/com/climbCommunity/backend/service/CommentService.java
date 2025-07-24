@@ -33,7 +33,7 @@ public class CommentService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글이 존재 하지 않습니다."));
 
-        User user = userRepository.findByUsername(userId)
+        User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자가 존재하지 않습니다."));
 
         Comment parentComment = null;
@@ -50,20 +50,20 @@ public class CommentService {
                 .status(CommentStatus.ACTIVE)
                 .build();
 
-        return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository);
+        return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository, userId);
     }
 
     // 댓글 수정
     public CommentResponseDto updateComment(Long commentId, String userId, CommentRequestDto dto, boolean isAdmin) {
-       Comment comment = commentRepository.findById(commentId)
-               .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
 
-       if (!isAdmin && !comment.getUser().getUserId().equals(userId)) {
-           throw new AccessDeniedException("본인만 댓글을 수정할 수 있습니다.");
-       }
+        if (!isAdmin && !comment.getUser().getUserId().equals(userId)) {
+            throw new AccessDeniedException("본인만 댓글을 수정할 수 있습니다.");
+        }
 
-       comment.setContent(dto.getContent());
-       return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository);
+        comment.setContent(dto.getContent());
+        return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository, userId);
     }
 
     // 댓글 삭제
@@ -80,22 +80,20 @@ public class CommentService {
     }
 
     // 댓글 트리 조회
-    public Page<CommentResponseDto> getCommentTreeByPostId(Long postId, int page, int size) {
+    public Page<CommentResponseDto> getCommentTreeByPostId(Long postId, int page, int size, String currentUserId) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
 
-        Page<Comment> parentComments = commentRepository.findByPost_IdAndStatus(postId, CommentStatus.ACTIVE, pageable);
+        Page<Comment> parentComments = commentRepository.findByPost_IdAndStatusAndParentCommentIsNull(
+                postId, CommentStatus.ACTIVE, pageable);
 
         return parentComments.map(comment -> {
-            // 부모 댓글 DTO 생성 (좋아요/싫어요 포함)
-            CommentResponseDto dto = CommentResponseDto.from(comment, commentLikeRepository);
+            CommentResponseDto dto = CommentResponseDto.from(comment, commentLikeRepository, currentUserId);
 
-            // 대댓글 계층 구조 구성 (좋아요/싫어요 포함)
             List<Comment> replies = commentRepository.findByParentComment_IdAndStatus(
-                    comment.getId(), CommentStatus.ACTIVE
-            );
+                    comment.getId(), CommentStatus.ACTIVE);
 
             List<CommentResponseDto> replyDtos = replies.stream()
-                    .map(reply -> CommentResponseDto.from(reply, commentLikeRepository))
+                    .map(reply -> CommentResponseDto.from(reply, commentLikeRepository, currentUserId))
                     .toList();
 
             dto.setReplies(replyDtos);
@@ -121,31 +119,33 @@ public class CommentService {
         reportRepository.save(report);
     }
 
-    // 좋아요 추가/취소
+    // 댓글 좋아요 추가
     @Transactional
-    public void toogleLike(Long commentId, String userId, LikeType type) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
+    public void addLike(Long commentId, String userId, LikeType type) {
+        if (!commentLikeRepository.existsByUser_UserIdAndComment_IdAndType(userId, commentId, type)) {
+            Comment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
+            User user = userRepository.findByUserId(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("사용자가 존재하지 않습니다."));
 
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new EntityNotFoundException("유저가 존재하지 않습니다."));
+            CommentLike like = CommentLike.builder()
+                    .user(user)
+                    .comment(comment)
+                    .type(type)
+                    .build();
 
-        Optional<CommentLike> existing = commentLikeRepository.findByUser_IdAndCommentId(user.getId(), commentId);
-
-        if (existing.isPresent()) {
-            CommentLike like = existing.get();
-            if (like.getType() == type) {
-                commentLikeRepository.delete(like);
-            } else {
-                like.setType(type);
-                commentLikeRepository.save(like);
-            }
-        } else {
-            CommentLike newLike = new CommentLike();
-            newLike.setUser(user);
-            newLike.setComment(comment);
-            newLike.setType(type);
-            commentLikeRepository.save(newLike);
+            commentLikeRepository.save(like);
         }
+    }
+
+    // 댓글 좋아요 취소
+    @Transactional
+    public void removeLike(Long commentId, String userId, LikeType type) {
+        commentLikeRepository.deleteByUser_UserIdAndComment_IdAndType(userId, commentId, type);
+    }
+
+    // 사용자가 좋아요 눌렀는지 확인
+    public boolean hasUserLiked(Long commentId, String userId, LikeType type) {
+        return commentLikeRepository.existsByUser_UserIdAndComment_IdAndType(userId, commentId, type);
     }
 }

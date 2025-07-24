@@ -2,9 +2,14 @@ package com.climbCommunity.backend.controller;
 
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
 import com.climbCommunity.backend.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,34 +25,34 @@ public class AdminPostController {
     private final PostService postService;
 
     @GetMapping
-    public ResponseEntity<List<PostResponseDto>> getAllPosts(
+    public ResponseEntity<Page<PostResponseDto>> getAllPosts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) PostStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        List<PostResponseDto> response = postService.findAllPosts(keyword, status, page, size)
-                .stream()
-                .map(PostResponseDto::fromEntity) // Post -> PostResponseDto 변환
-                .toList();
+            @RequestParam(required = false) Category category,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<Post> posts = postService.findAllPosts(keyword, status, category, pageable);
+        Page<PostResponseDto> response = posts.map(PostResponseDto::fromEntity);
 
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PostResponseDto> getPost(@PathVariable Long id) {
-        Post post = postService.getPostById(id);
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<PostResponseDto> getPost(@PathVariable Long postId) {
+        Post post = postService.getPostById(postId);
         return ResponseEntity.ok(PostResponseDto.fromEntity(post));
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Void> updatePostStatus(@PathVariable Long id, @RequestParam PostStatus postStatus) {
-        postService.adminUpdatePostStatus(id, postStatus);
+    @PutMapping("/{postId}/status")
+    public ResponseEntity<Void> updatePostStatus(@PathVariable Long postId, @RequestParam PostStatus postStatus) {
+        postService.adminUpdatePostStatus(postId, postStatus);
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.adminDeletePost(id);
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<Void> deletePost(@PathVariable Long postId) {
+        postService.adminDeletePost(postId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,11 +1,16 @@
 package com.climbCommunity.backend.repository;
 
+import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.PostLike;
+import com.climbCommunity.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
-    int countByPostId(Long postId);
-    boolean existsByPostIdAndUserId(Long postId, Long userId);
+    boolean existsByUserAndPost(User user, Post post);
+    Optional<PostLike> findByUserAndPost(User user, Post post);
+    long countByPost(Post post);
 }

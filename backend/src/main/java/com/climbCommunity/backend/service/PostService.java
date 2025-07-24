@@ -1,11 +1,13 @@
 package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
 import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.exception.NotFoundException;
 import com.climbCommunity.backend.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,12 +24,16 @@ public class PostService {
         return postRepository.save(post);
     }
 
-    public List<Post> getAllPosts() {
-        return postRepository.findAll();
+    public Page<Post> getAllPosts(Pageable pageable) {
+        return postRepository.findAll(pageable);
     }
 
     public List<Post> getPostsByUserId(Long userId) {
         return postRepository.findByUserId(userId);
+    }
+
+    public Page<Post> getPostsByCategory(Category category, Pageable pageable){
+        return postRepository.findByCategory(category, pageable);
     }
 
     // 게시글 단일 조회
@@ -37,7 +43,7 @@ public class PostService {
     }
 
     // 게시글 수정
-    public Post updatePost(Long id, String title, String content, String currentUserId) {
+    public Post updatePost(Long id, String title, String content, Category category, String currentUserId) {
         Post post = getPostById(id);
 
         if (!post.getUser().getUserId().equals(currentUserId)) {
@@ -46,6 +52,7 @@ public class PostService {
 
         post.setTitle(title);
         post.setContent(content);
+        post.setCategory(category);
         return postRepository.save(post);
     }
 
@@ -60,18 +67,16 @@ public class PostService {
     }
 
     // 관리자 전체 게시글 조회
-    public List<Post> findAllPosts(String keyword, PostStatus status, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-
-        if (keyword != null && status != null) {
+    public Page<Post> findAllPosts(String keyword, PostStatus status, Category category, Pageable pageable) {
+        if (keyword != null && status != null && category != null) {
+            return postRepository.findByTitleContainingAndStatusAndCategory(keyword, status, category, pageable);
+        } else if (keyword != null && status != null) {
             return postRepository.findByTitleContainingAndStatus(keyword, status, pageable);
         } else if (keyword != null) {
             return postRepository.findByTitleContaining(keyword, pageable);
-        } else if (status != null) {
-            return postRepository.findByStatus(status, pageable);
+        } else {
+            return postRepository.findAll(pageable);
         }
-
-        return postRepository.findAll(pageable).getContent();
     }
 
     // 관리자 게시글 상태 변경
