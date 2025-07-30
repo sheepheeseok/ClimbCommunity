@@ -1,11 +1,14 @@
 package com.climbCommunity.backend.service;
 
+import com.climbCommunity.backend.dto.location.Coordinate;
 import com.climbCommunity.backend.dto.user.UserRegisterRequestDto;
 import com.climbCommunity.backend.dto.user.UserUpdateRequestDto;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
+import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -21,6 +24,9 @@ import java.util.Optional;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NaverMapService naverMapService;
+    private final NaverReverseGeocodingService naverReverseGeocodingService;
+    private final UserAddressRepository userAddressRepository;
 
     public User saveUser(User user) {
         return userRepository.save(user);
@@ -63,15 +69,38 @@ public class UserService {
                 .email(dto.getEmail())
                 .password(passwordEncoder.encode(dto.getPassword()))
                 .tel(dto.getTel())
-                .address1(dto.getAddress1())
-                .address2(dto.getAddress2())
                 .grade(Grade.White)
                 .profileImage(null)
                 .role(Role.USER)
                 .status(Status.active)
                 .build();
 
-        return userRepository.save(user);
+        userRepository.save(user);
+
+        // 2. 주소 처리
+        String fullAddress = dto.getAddress1() + " " + dto.getAddress2();
+
+        Coordinate coordinate = naverMapService.geocodeAddress(fullAddress)
+                .orElseThrow(() -> new IllegalArgumentException("주소로 좌표를 찾을 수 없습니다."));
+
+        String dong = naverReverseGeocodingService.reverseGeocodeOnly(
+                coordinate.getLatitude(),
+                coordinate.getLongitude()
+        ).orElse("미확인");
+
+        UserAddress userAddress = UserAddress.builder()
+                .user(user)
+                .address(fullAddress)
+                .dong(dong)
+                .latitude(coordinate.getLatitude())
+                .longitude(coordinate.getLongitude())
+                .isPrimary(true)
+                .isVerified(false)
+                .build();
+
+        userAddressRepository.save(userAddress);
+
+        return user;
     }
 
     @Transactional
@@ -81,9 +110,39 @@ public class UserService {
 
         if (dto.getUsername() != null) user.setUsername(dto.getUsername());
         if (dto.getTel() != null) user.setTel(dto.getTel());
-        if (dto.getAddress1() != null) user.setAddress1(dto.getAddress1());
-        if (dto.getAddress2() != null) user.setAddress2(dto.getAddress2());
         if (dto.getProfileImage() != null) user.setProfileImage(dto.getProfileImage());
+
+        // ✅ 주소가 전달된 경우 처리
+        if (dto.getAddress1() != null && dto.getAddress2() != null) {
+            String fullAddress = dto.getAddress1() + " " + dto.getAddress2();
+
+            // 1. 기존 대표 주소 → isPrimary = false 처리
+            userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
+                    .ifPresent(primary -> {
+                        primary.setPrimary(false);
+                        userAddressRepository.save(primary);
+                    });
+
+            // 2. 새 주소 → 좌표 및 동 추출
+            Coordinate coordinate = naverMapService.geocodeAddress(fullAddress)
+                    .orElseThrow(() -> new IllegalArgumentException("주소를 좌표로 변환할 수 없습니다."));
+
+            String dong = naverReverseGeocodingService.reverseGeocodeOnly(coordinate.getLatitude(), coordinate.getLongitude())
+                    .orElse("미확인");
+
+            // 3. 새로운 주소 추가
+            UserAddress newAddress = UserAddress.builder()
+                    .user(user)
+                    .address(fullAddress)
+                    .dong(dong)
+                    .latitude(coordinate.getLatitude())
+                    .longitude(coordinate.getLongitude())
+                    .isPrimary(true)      // 새 주소가 대표 주소가 됨
+                    .isVerified(false)    // 아직 인증된 주소는 아님
+                    .build();
+
+            userAddressRepository.save(newAddress);
+        }
 
         return userRepository.save(user);
     }

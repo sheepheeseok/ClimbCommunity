@@ -17,4 +17,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByTitleContainingAndStatusAndCategory(String title, PostStatus status, Category category, Pageable pageable);
     Page<Post> findByTitleContainingAndStatus(String title, PostStatus status, Pageable pageable);
     Page<Post> findByTitleContaining(String title, Pageable pageable);
+    int countByUser_Id(Long userId);
 }

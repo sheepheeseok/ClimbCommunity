@@ -2,9 +2,12 @@ package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.user.UserResponseDto;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
+import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
+import com.climbCommunity.backend.util.AddressUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final UserAddressRepository userAddressRepository;
 
     public Page<UserResponseDto> getAllUsers(int page, int size, String keyword) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -53,13 +57,25 @@ public class AdminUserService {
         }
 
     private UserResponseDto toResponseDto(User user) {
+        // ✅ 대표 주소 조회
+        UserAddress primaryAddress = userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
+                .orElse(null);
+
+        String address1 = primaryAddress != null
+                ? AddressUtil.extractRoadName(primaryAddress.getAddress())
+                : null;
+
+        String address2 = primaryAddress != null
+                ? AddressUtil.extractDetailAddress(primaryAddress.getAddress())
+                : null;
+
         return UserResponseDto.builder()
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .tel(user.getTel())
-                .address1(user.getAddress1())
-                .address2(user.getAddress2())
+                .address1(address1)
+                .address2(address2)
                 .role(user.getRole().name())
                 .Grade(user.getGrade().name())
                 .status(user.getStatus().name())

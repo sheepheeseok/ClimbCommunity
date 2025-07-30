@@ -39,12 +39,6 @@ public class User {
     @Column(length = 20)
     private String tel;
 
-    @Column(length = 255)
-    private String address1;
-
-    @Column(length = 255)
-    private String address2;
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Grade grade;

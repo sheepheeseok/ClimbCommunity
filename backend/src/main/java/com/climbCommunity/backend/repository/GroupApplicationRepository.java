@@ -13,4 +13,6 @@ public interface GroupApplicationRepository extends JpaRepository<GroupApplicati
     Optional<GroupApplication> findByRecruitment_IdAndUser_UserId(Long recruitmentId, String userId);
 
     List<GroupApplication> findAllByRecruitment_Id(Long recruitmentId);
+    List<GroupApplication> findByUser_Id(Long userId);
+    int countByUser_Id(Long userId);
 }

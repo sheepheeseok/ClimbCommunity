@@ -1,6 +1,7 @@
 package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.group.GroupApplicationResponseDto;
+import com.climbCommunity.backend.dto.useractivity.MyApplicationDto;
 import com.climbCommunity.backend.entity.GroupApplication;
 import com.climbCommunity.backend.entity.GroupRecruitment;
 import com.climbCommunity.backend.entity.User;
@@ -101,5 +102,20 @@ public class GroupApplicationService {
 
         if (newStatus == ApplicationStatus.ACCEPTED) application.approve();
         else if (newStatus == ApplicationStatus.REJECTED) application.reject();
+    }
+
+    public List<MyApplicationDto> getApplicationsByUser(Long userId) {
+        return applicationRepository.findByUser_Id(userId).stream()
+                .map(app -> MyApplicationDto.builder()
+                        .recruitmentId(app.getRecruitment().getId())
+                        .title(app.getRecruitment().getTitle())
+                        .status(app.getStatus().name())
+                        .appliedAt(app.getCreatedAt().toString())
+                        .build())
+                .toList();
+    }
+
+    public int countByUser(Long userId) {
+        return applicationRepository.countByUser_Id(userId);
     }
 }

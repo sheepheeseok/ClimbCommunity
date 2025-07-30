@@ -4,6 +4,8 @@ import com.climbCommunity.backend.dto.group.GroupRecruitmentDetailDto;
 import com.climbCommunity.backend.dto.group.GroupRecruitmentRequestDto;
 import com.climbCommunity.backend.dto.group.GroupRecruitmentResponseDto;
 import com.climbCommunity.backend.dto.group.GroupRecruitmentSummaryDto;
+import com.climbCommunity.backend.dto.useractivity.MyPostDto;
+import com.climbCommunity.backend.dto.useractivity.MyRecruitmentDto;
 import com.climbCommunity.backend.entity.GroupRecruitment;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.exception.AccessDeniedException;
@@ -17,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -123,5 +127,20 @@ public class GroupRecruitmentService {
         }
 
         groupRecruitmentRepository.delete(recruitment);
+    }
+
+    public List<MyRecruitmentDto> getMyRecruitment(Long userId) {
+        return groupRecruitmentRepository.findByUserId(userId).stream()
+                .map(groupPost -> MyRecruitmentDto.builder()
+                        .groupPostId(groupPost.getId())
+                        .title(groupPost.getTitle())
+                        .status(groupPost.getStatus().name())
+                        .createdAt(groupPost.getCreatedAt().toString())
+                        .build())
+                .toList();
+    }
+
+    public int countByUser(Long userId) {
+        return groupRecruitmentRepository.countByUser_Id(userId);
     }
 }

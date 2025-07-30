@@ -7,9 +7,12 @@ import com.climbCommunity.backend.dto.user.FindPasswordResponse;
 import com.climbCommunity.backend.dto.user.FindUserIdRequest;
 import com.climbCommunity.backend.dto.user.FindUserIdResponse;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Status;
+import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
 import com.climbCommunity.backend.security.JwtUtil;
+import com.climbCommunity.backend.util.AddressUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,18 +31,42 @@ public class AuthService {
     private final JwtUtil jwtutil;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final UserAddressRepository userAddressRepository;
 
     public LoginResponseDto login(LoginReqeustDto dto) {
         User user = userService.findByUserId(dto.getUserId())
                 .orElseThrow(() -> new UsernameNotFoundException("아이디가 올바르지 않습니다."));
 
-        if(!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new BadCredentialsException("비밀번호가 올바르지 않습니다.");
         }
 
         String token = jwtutil.generateToken(user.getUserId());
 
-        return new LoginResponseDto(token, user.getId(), user.getUserId(), user.getUsername(), user.getEmail(), user.getTel() , user.getAddress1(), user.getAddress2(), user.getGrade().name(), user.getProfileImage());
+        // ✅ 대표 주소 조회 및 분해
+        UserAddress primaryAddress = userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
+                .orElse(null);
+
+        String address1 = primaryAddress != null
+                ? AddressUtil.extractRoadName(primaryAddress.getAddress())
+                : null;
+
+        String address2 = primaryAddress != null
+                ? AddressUtil.extractDetailAddress(primaryAddress.getAddress())
+                : null;
+
+        return new LoginResponseDto(
+                token,
+                user.getId(),
+                user.getUserId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getTel(),
+                address1,
+                address2,
+                user.getGrade().name(),
+                user.getProfileImage()
+        );
     }
 
     public FindUserIdResponse findUserId(FindUserIdRequest request) {

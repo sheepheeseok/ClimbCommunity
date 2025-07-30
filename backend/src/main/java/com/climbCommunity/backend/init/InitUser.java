@@ -1,15 +1,21 @@
 package com.climbCommunity.backend.init;
 
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
+import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
 import com.climbCommunity.backend.service.UserService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
 
 @Component
 @RequiredArgsConstructor
@@ -17,7 +23,9 @@ public class InitUser {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserAddressRepository userAddressRepository;
 
+    @Transactional
     @PostConstruct
     public void init() {
         if (userRepository.existsByUsername("climber123")) {
@@ -33,8 +41,6 @@ public class InitUser {
                 .userId("climber123")
                 .email("test@example.com")
                 .password(encodedPassword)
-                .address1("서울특별시 강남구")
-                .address2("역삼동 123-45")
                 .tel("010-1234-1234")
                 .grade(Grade.White)
                 .status(Status.active)
@@ -42,7 +48,22 @@ public class InitUser {
                 .profileImage(null)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userRepository.flush();
+
+        UserAddress address = UserAddress.builder()
+                .user(savedUser)
+                .address("서울특별시 강남구 논현동 123-4")
+                .dong("논현동")
+                .latitude(37.5112)
+                .longitude(127.0207)
+                .isVerified(true)
+                .isPrimary(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        userAddressRepository.save(address);
+
         System.out.println("✅ 초기 계정 생성 완료: climber123");
     }
 }
