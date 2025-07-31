@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.service;
 
+import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
@@ -90,5 +91,20 @@ public class PostService {
     public void adminDeletePost(Long postId) {
         Post post = getPostById(postId);
         postRepository.delete(post);
+    }
+
+    public List<MyPostDto> getMyPosts(Long userId) {
+        return postRepository.findByUserId(userId).stream()
+                .map(post -> MyPostDto.builder()
+                        .postId(post.getId())
+                        .title(post.getTitle())
+                        .category(post.getCategory().name())
+                        .createdAt(post.getCreatedAt().toString())
+                        .build())
+                .toList();
+    }
+
+    public int countByUser(Long userId) {
+        return postRepository.countByUser_Id(userId);
     }
 }

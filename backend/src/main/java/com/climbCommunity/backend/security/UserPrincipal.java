@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class UserPrincipal implements UserDetails {
 
+    private Long id;
     private String userId;
     private String username;
     private String password;
@@ -50,6 +51,7 @@ public class UserPrincipal implements UserDetails {
 
     public static UserPrincipal fromEntity(User user) {
         return new UserPrincipal(
+                user.getId(),
                 user.getUserId(),
                 user.getUsername(),
                 user.getPassword(),

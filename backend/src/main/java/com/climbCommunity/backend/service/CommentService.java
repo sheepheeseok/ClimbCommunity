@@ -2,6 +2,7 @@ package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.comment.CommentRequestDto;
 import com.climbCommunity.backend.dto.comment.CommentResponseDto;
+import com.climbCommunity.backend.dto.useractivity.MyCommentDto;
 import com.climbCommunity.backend.entity.*;
 import com.climbCommunity.backend.entity.enums.CommentStatus;
 import com.climbCommunity.backend.entity.enums.LikeType;
@@ -147,5 +148,20 @@ public class CommentService {
     // 사용자가 좋아요 눌렀는지 확인
     public boolean hasUserLiked(Long commentId, String userId, LikeType type) {
         return commentLikeRepository.existsByUser_UserIdAndComment_IdAndType(userId, commentId, type);
+    }
+
+    public List<MyCommentDto> getMyComments(Long userId) {
+        return commentRepository.findByUser_Id(userId).stream()
+                .map(comment -> MyCommentDto.builder()
+                        .commentId(comment.getId())
+                        .content(comment.getContent())
+                        .postId(comment.getPost().getId())
+                        .createdAt(comment.getCreatedAt().toString())
+                        .build())
+                .toList();
+    }
+
+    public int countByUser(Long userId) {
+        return commentRepository.countByUser_Id(userId);
     }
 }

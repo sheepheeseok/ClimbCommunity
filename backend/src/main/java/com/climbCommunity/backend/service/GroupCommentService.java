@@ -2,6 +2,8 @@ package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.group.GroupCommentRequestDto;
 import com.climbCommunity.backend.dto.group.GroupCommentResponseDto;
+import com.climbCommunity.backend.dto.useractivity.MyGroupCommentDto;
+import com.climbCommunity.backend.entity.GroupComment;
 import com.climbCommunity.backend.entity.*;
 import com.climbCommunity.backend.entity.enums.NotificationType;
 import com.climbCommunity.backend.entity.enums.TargetType;
@@ -13,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class GroupCommentService {
     private final GroupCommentLikeRepository likeRepository;
     private final GroupCommentReportRepository reportRepository;
     private final NotificationService notificationService;
+    private final GroupCommentRepository groupCommentRepository;
 
     // 댓글 생성 (대댓글 포함)
     @Transactional
@@ -165,5 +167,20 @@ public class GroupCommentService {
                 .user(user)
                 .reason(reason)
                 .build());
+    }
+
+    public List<MyGroupCommentDto> getMyGroupComments(Long userId) {
+        return groupCommentRepository.findByUser_Id(userId).stream()
+                .map(groupComment -> MyGroupCommentDto.builder()
+                        .groupCommentId(groupComment.getId())
+                        .content(groupComment.getContent())
+                        .groupId(groupComment.getGroupRecruitment().getId())
+                        .createdAt(groupComment.getCreatedAt().toString())
+                        .build())
+                .toList();
+    }
+
+    public int countByUser(Long userId) {
+        return groupCommentRepository.countByUser_Id(userId);
     }
 }

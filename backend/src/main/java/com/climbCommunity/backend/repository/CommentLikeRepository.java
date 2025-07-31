@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> {
@@ -19,4 +20,7 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> 
     @Transactional
     @Modifying
     void deleteByUser_UserIdAndComment_IdAndType(String userId, Long commentId, LikeType type);
+
+    List<CommentLike> findByUser_Id(Long userId);
+    int countByUser_Id(Long userId);
 }
