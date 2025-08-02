@@ -3,21 +3,26 @@ package com.climbCommunity.backend.controller;
 import com.climbCommunity.backend.dto.post.PostRequestDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.entity.PostImage;
+import com.climbCommunity.backend.entity.PostVideo;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.exception.NotFoundException;
+import com.climbCommunity.backend.repository.PostImageRepository;
+import com.climbCommunity.backend.repository.PostVideoRepository;
 import com.climbCommunity.backend.security.UserPrincipal;
-import com.climbCommunity.backend.service.PostService;
-import com.climbCommunity.backend.service.UserService;
+import com.climbCommunity.backend.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -29,12 +34,17 @@ import java.util.stream.Collectors;
 public class PostController {
     private final PostService postService;
     private final UserService userService;
+    private final S3Service s3Service;
+    private final PostVideoService postVideoService;
+    private final PostImageService postImageService;
 
     // 게시글 등록
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponseDto> createPost(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @Valid @RequestBody PostRequestDto dto) {
+            @RequestPart("post") @Valid PostRequestDto dto,
+            @RequestPart(value = "images", required = false) List<MultipartFile> imageFiles,
+            @RequestPart(value = "videos", required = false) List<MultipartFile> videoFiles) {
 
         User user = userService.findByUserId(userPrincipal.getUserId())
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
@@ -46,9 +56,10 @@ public class PostController {
                 .category(dto.getCategory())
                 .build();
 
-        Post savedPost = postService.savePost(post);
+        Post savedPost = postService.savePostWithMedia(post, imageFiles, videoFiles);
         return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost));
     }
+
 
     // 게시글 목록 조회 ( 카테고리별 조회 )
     @GetMapping

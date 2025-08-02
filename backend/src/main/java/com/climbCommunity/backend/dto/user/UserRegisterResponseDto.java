@@ -3,6 +3,8 @@ package com.climbCommunity.backend.dto.user;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 @AllArgsConstructor
 public class UserRegisterResponseDto {
@@ -12,4 +14,6 @@ public class UserRegisterResponseDto {
     private String email;
     private String grade;
     private String profileImage;
+    private LocalDate birthdate;
+    private String gender;
 }
