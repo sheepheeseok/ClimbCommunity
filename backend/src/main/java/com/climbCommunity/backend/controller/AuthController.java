@@ -5,7 +5,9 @@ import com.climbCommunity.backend.dto.login.LoginResponseDto;
 import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.service.AuthService;
 import com.climbCommunity.backend.service.UserService;
-import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,9 +29,24 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginReqeustDto request) {
-        LoginResponseDto response = authService.login(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<LoginResponseDto> login(
+            @RequestBody LoginReqeustDto request,
+            HttpServletResponse response
+    ) {
+        LoginResponseDto loginResponse = authService.login(request); // 토큰 포함 DTO
+
+        // 토큰을 쿠키에 저장
+        ResponseCookie cookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
+                .httpOnly(true)
+                .secure(false) // 배포 시 true + HTTPS 필요
+                .path("/")
+                .maxAge(86400) // 1일
+                .sameSite("Lax") // "None" 사용 시 secure=true 필수
+                .build();
+
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(loginResponse); // or return new ResponseEntity<>(loginResponse, HttpStatus.OK);
     }
 
     @PostMapping("/findUserId")
@@ -72,5 +89,27 @@ public class AuthController {
         userService.changePassword(currentUserId, dto.getCurrentPassword(), dto.getNewPassword());
 
         return ResponseEntity.ok().body(Map.of("message", "비밀번호가 성공적으로 변경되었습니다."));
+    }
+
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Map<String, Boolean>> checkDuplicate(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String username) {
+
+        boolean isUserIdDuplicate = false;
+        boolean isUsernameDuplicate = false;
+
+        if (userId != null && !userId.isBlank()) {
+            isUserIdDuplicate = authService.isUserIdTaken(userId);
+        }
+
+        if (username != null && !username.isBlank()) {
+            isUsernameDuplicate = authService.isUsernameTaken(username);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "userId", isUserIdDuplicate,
+                "username", isUsernameDuplicate
+        ));
     }
 }

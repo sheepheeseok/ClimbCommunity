@@ -25,4 +25,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByDeletedAtAfterAndStatus(LocalDateTime dateTime, Status status);
     Page<User> findByUsernameContainingOrUserIdContaining(String username, String userId, Pageable pageable);
     boolean existsByUsername(String username);
+    boolean existsByUserId(String userId);
 }

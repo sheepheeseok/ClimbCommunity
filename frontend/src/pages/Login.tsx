@@ -1,47 +1,14 @@
 import InputField from "@/components/InputField";
-import { useState, ChangeEvent, FormEvent } from "react";
-
-interface InputFieldProps {
-   name: string;
-   value: string;
-   placeholder: string;
-   type?: string;
-   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-   error?: string;
-}
+import { LoginHook } from "@/hooks/LoginHook";
 
 export default function Login() {
-   const [form, setForm] = useState({ userId: "", password: "" });
-   const [errorMsg, setErrorMsg] = useState("");
-   const [loading, setLoading] = useState(false);
-
-   // 입력값 변경
-   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = e.target;
-      setForm((prev) => ({ ...prev, [name]: value }));
-      setErrorMsg(""); // 입력값 바뀌면 에러 메시지 초기화
-   };
-
-   // 로그인 폼 제출
-   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-
-      // 빈칸 체크
-      if (!form.userId || !form.password) return alert("빈칸 없이 입력하세요.");
-
-      setLoading(true); // 로그인 버튼 로딩 상태 변경
-
-      try {
-         // TODO: 실제 로그인 API 연동
-         // await axios.post("/api/login", form);
-         alert("로그인 성공!");
-         setForm({ userId: "", password: "" });
-      } catch {
-         setErrorMsg("아이디 또는 비밀번호가 올바르지 않습니다.");
-      } finally {
-         setLoading(false);
-      }
-   };
+   const {
+      form,
+      errorMsg,
+      loading,
+      handleChange,
+      handleSubmit,
+   } = LoginHook();
 
    return (
       <>

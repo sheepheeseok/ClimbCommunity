@@ -119,7 +119,9 @@ public class UserController {
                 savedUser.getUsername(),
                 savedUser.getEmail(),
                 savedUser.getGrade().name(),
-                savedUser.getProfileImage()
+                savedUser.getProfileImage(),
+                savedUser.getBirthdate(),
+                savedUser.getGender().name()
         );
 
         return ResponseEntity.ok(response);

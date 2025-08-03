@@ -2,16 +2,20 @@ package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.entity.PostImage;
+import com.climbCommunity.backend.entity.PostVideo;
 import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
 import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.exception.NotFoundException;
 import com.climbCommunity.backend.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +24,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PostService {
     private final PostRepository postRepository;
+    private final S3Service s3Service;
+    private final PostImageService postImageService;
+    private final PostVideoService postVideoService;
 
     public Post savePost(Post post) {
         return postRepository.save(post);
@@ -106,5 +113,35 @@ public class PostService {
 
     public int countByUser(Long userId) {
         return postRepository.countByUser_Id(userId);
+    }
+
+    public Post savePostWithMedia(Post post, List<MultipartFile> images, List<MultipartFile> videos) {
+        Post savedPost = postRepository.save(post);
+
+        // 이미지 업로드 및 저장
+        if (images != null && !images.isEmpty()) {
+            for (MultipartFile file : images) {
+                String imageUrl = s3Service.uploadFile(file, "post/images/");
+                PostImage postImage = PostImage.builder()
+                        .post(savedPost)
+                        .imageUrl(imageUrl)
+                        .build();
+                postImageService.save(postImage);
+            }
+        }
+
+        // 비디오 업로드 및 저장
+        if (videos != null && !videos.isEmpty()) {
+            for (MultipartFile file : videos) {
+                String videoUrl = s3Service.uploadFile(file, "post/videos/");
+                PostVideo postVideo = PostVideo.builder()
+                        .post(savedPost)
+                        .videoUrl(videoUrl)
+                        .build();
+                postVideoService.save(postVideo);
+            }
+        }
+
+        return savedPost;
     }
 }
