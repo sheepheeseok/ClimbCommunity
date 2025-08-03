@@ -11,4 +11,4 @@ const Navbar = () => {
   if (isPc) return <PCNavBar />;
 };
 
-export default Navbar;
+export default NavBar;
