@@ -5,9 +5,9 @@
     "module": "esnext",                                /* Specify what module code is generated. */
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "baseUrl": ".",                                  /* Specify the base directory to resolve non-relative module names. */
+    "baseUrl": "./src",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["*"]
     },                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
     "esModuleInterop": true,                             /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */
     "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports. */

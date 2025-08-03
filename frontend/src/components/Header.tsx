@@ -7,7 +7,7 @@ const Header = () => {
     const { getDisplayedDong, locations, handleVerifyLocation } = VerifyLocationHook();
 
     return (
-        <div className="header w-full z-1000 px-4 py-2.5 absolute left-0 top-0 bg-white flex justify-between items-center">
+        <div className="header w-full z-50 px-4 py-2.5 fixed left-0 top-0 bg-white flex justify-between items-center">
             <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center bg-white gap-2 text-xl font-semibold">
                     {getDisplayedDong()}
