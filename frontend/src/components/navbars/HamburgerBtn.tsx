@@ -23,8 +23,8 @@ export default function HamburgerBtn() {
 
    return (
       <DropdownMenu>
-         <DropdownMenuTrigger className="bg-transparent flex flex-row items-center gap-3 hover:bg-gray-100 border-none transition-colors">
-            <HamburgerIcon /> <span>더보기</span>
+         <DropdownMenuTrigger className="bg-transparent flex flex-row items-center gap-3 hover:bg-gray-100 border-none transition-colors cursor-pointer">
+            <HamburgerIcon /> <span>더 보기</span>
          </DropdownMenuTrigger>
 
          <DropdownMenuContent className="w-60 h-auto mx-4 p-2 gap-3">
@@ -32,7 +32,7 @@ export default function HamburgerBtn() {
                <DropdownMenuItem
                   asChild
                   key={idx}
-                  className="py-3 px-4 flex items-center gap-3"
+                  className="py-3 px-4 flex items-center gap-3 cursor-pointer"
                >
                   <Link to={item.path} className="flex items-center gap-3 w-full text-black">
                      <item.icon className="!w-7 !h-7 shrink-0" />
@@ -43,10 +43,10 @@ export default function HamburgerBtn() {
 
             <DropdownMenuSeparator className="h-1 bg-gray-100" />
 
-            <DropdownMenuItem asChild className="py-3 px-4 text-black">
-               <Link to="/account">계정정보수정</Link>
+            <DropdownMenuItem asChild className="py-3 px-4 text-black cursor-pointer">
+               <Link to="/account">계정 정보 수정</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="py-3 px-4 text-black">
+            <DropdownMenuItem asChild className="py-3 px-4 text-black cursor-pointer">
                <Link to="/logout">로그아웃</Link>
             </DropdownMenuItem>
          </DropdownMenuContent>
