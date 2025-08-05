@@ -4,10 +4,10 @@ import { useMediaQuery } from "react-responsive";
 import './App.css'
 import Home from './pages/home_tap/Home'
 import Header from "@/components/Header";
-import Navbar from "@/components/Navbar";
-import SignUp from './pages/Sign_up';
-import ResetPassword from './pages/ResetPassword';
-import Login from './pages/Login';
+import SignUp from './pages/auth/SignUp';
+import ResetPassword from './pages/auth/ResetPassword';
+import Login from './pages/auth/Login';
+import Navbar from '@/components/NavBar';
 
 function App() {
   const isMobile = useMediaQuery({ maxWidth: 768 });

@@ -13,7 +13,7 @@ import { Logo } from "@/components/Logo";
 import { BellIcon } from "@/components/icons/BellIcon";
 
 import { ChattingActive } from "@/components/icons/ChattingActive";
-import HamburgerBtn from "@/pages/home_tap/HamburgerBtn";
+import HamburgerBtn from "@/components/navbars/HamburgerBtn";
 import { Button } from "@/components/ui/button"
 import { Chatting } from "@/components/icons/Chatting";
 import UploadModal from "@/pages/upload_tap/UploadModal";
