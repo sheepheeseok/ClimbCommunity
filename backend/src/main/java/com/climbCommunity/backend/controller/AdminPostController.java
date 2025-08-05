@@ -6,6 +6,7 @@ import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
 import com.climbCommunity.backend.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

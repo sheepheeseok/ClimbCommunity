@@ -5,6 +5,7 @@ import com.climbCommunity.backend.dto.user.UserRegisterRequestDto;
 import com.climbCommunity.backend.dto.user.UserUpdateRequestDto;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
+import com.climbCommunity.backend.entity.enums.Gender;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -69,6 +71,8 @@ public class UserService {
                 .email(dto.getEmail())
                 .password(passwordEncoder.encode(dto.getPassword()))
                 .tel(dto.getTel())
+                .birthdate(dto.getBirthdate())
+                .gender(Gender.valueOf(dto.getGender().toUpperCase())) // "male" → MALE
                 .grade(Grade.White)
                 .profileImage(null)
                 .role(Role.USER)

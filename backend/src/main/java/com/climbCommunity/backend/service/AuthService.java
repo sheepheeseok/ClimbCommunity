@@ -141,4 +141,12 @@ public class AuthService {
         user.setDeletedAt(null);
         userRepository.save(user);
     }
+
+    public boolean isUserIdTaken(String userId) {
+        return userRepository.existsByUserId(userId);
+    }
+
+    public boolean isUsernameTaken(String username) {
+        return userRepository.existsByUsername(username);
+    }
 }
