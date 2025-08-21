@@ -7,7 +7,8 @@ import Header from "@/components/Header";
 import SignUp from './pages/auth/SignUp';
 import ResetPassword from './pages/auth/ResetPassword';
 import Login from './pages/auth/Login';
-import Navbar from '@/components/NavBar';
+import Navbar from './components/Navbar';
+import MyPage from './pages/my_tap/MyPage';
 
 function App() {
   const isMobile = useMediaQuery({ maxWidth: 768 });
@@ -20,9 +21,11 @@ function App() {
         <main className="min-h-screen flex flex-col items-center justify-start">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/mypage" element={<MyPage />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
             <Route path="/reset-pw" element={<ResetPassword />} />
+            
           </Routes>
         </main>
       </BrowserRouter>

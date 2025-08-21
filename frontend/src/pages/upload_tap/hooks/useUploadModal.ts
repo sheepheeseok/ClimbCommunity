@@ -6,18 +6,18 @@ import { useUploadForm } from "./useUploadForm";
 
 
 export function useUploadModal() {
-   const { open, setOpen, step, setStep } = useUploadModalState();
+   const { isOpen, setOpen, step, setStep } = useUploadModalState();
    const { files, setFiles, removeFile, dropzone } = useUploadFiles();
    const form = useUploadForm();
 
    // 모달 닫힐 때 폼 초기화
    useEffect(() => {
-      if (!open) {
+      if (!isOpen) {
          setStep(1);
          setFiles([]);
          form.reset();
       }
-   }, [open]);
+   }, [isOpen]);
 
    // 게시물 업로드
    const handleUpload = () => {
@@ -32,7 +32,7 @@ export function useUploadModal() {
    };
 
    return {
-      open,
+      isOpen,
       setOpen,
       step,
       setStep,

@@ -7,12 +7,11 @@ import UploadStepForm from "./components/UploadStepForm";
 
 
 export default function UploadModal({ trigger }: { trigger: React.ReactNode }) {
-
-   const { open, setOpen, step, setStep, files, form, removeFile, handleUpload, dropzone } = useUploadModal();
+   const { isOpen, setOpen, step, setStep, files, form, removeFile, handleUpload, dropzone } = useUploadModal();
    const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = dropzone;
 
    return (
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={isOpen} onOpenChange={setOpen}>
          <DialogTrigger asChild>{trigger}</DialogTrigger>
 
          {/* 모달창 */}
