@@ -3,56 +3,46 @@ import { useState, useEffect } from "react"
 import ProfileHeaderSection from "./sections/ProfileHeaderSection";
 import WorkoutSummarySection from "./sections/WorkoutSummary";
 import PostsSection from "./sections/PostSection";
-
+import { Post } from "@/types/post";
 
 // 가데이터
-export type Post = {
-   id: string;          // 게시물 ID (필수)
-   createdAt?: string;  // ISO 날짜 문자열 ("2025-08-10")
-   location?: string;   // 위치 정보 ("서울 클라이밍짐")
-   media: { type: "image" | "video"; url: string; poster?: string }[]; // ✅ 단일 배열
-};
-type UserItem = { id: string; name: string; avatar?: string; isFollowing?: boolean } // 유저 정보
-
 const dummyPosts: Post[] = [
    {
       id: "p1",
       createdAt: "2025-08-10",
       location: "서울 클라이밍짐",
-      media: [
-         { type: "image", url: "https://images.unsplash.com/photo-1549880181-56a44cf4a9a3?q=80&w=800&auto=format" },
-      ],
+      text: "오늘은 몸이 가벼워서 V3 온사이트!",
+      media: [{ type: "image", url: "https://picsum.photos/id/1011/1200/900" }],
+      author: { id: "u1", nickname: "한상준", level: "Lv.7" },
+      attemptsByGrade: [0, 2, 1, 0, 0, 0, 0],
+      clearsByGrade: [0, 1, 1, 0, 0, 0, 0],
    },
    {
       id: "p2",
       createdAt: "2025-06-02",
+      text: "세로 루트에서 템포 유지가 포인트.",
       media: [
-         { type: "image", url: "https://picsum.photos/id/1050/800/1066" },
+         { type: "image", url: "https://picsum.photos/id/1027/1200/900" },
+         { type: "image", url: "https://picsum.photos/id/1045/1200/900" },
       ],
+      author: { id: "u2", nickname: "유나", level: "Lv.3" },
+      attemptsByGrade: [4, 0, 0, 0, 0, 0, 0],
+      clearsByGrade: [2, 0, 0, 0, 0, 0, 0],
    },
    {
       id: "p3",
-      location: "야외 암장(인수봉)",
-      media: [
-         { type: "image", url: "https://picsum.photos/id/1011/800/1066" },
-      ],
-   },
-   {
-      id: "p4",
       createdAt: "2025-07-15",
       location: "부산 볼더링센터",
-      media: [
-         // mp4는 같은 오리진(예: public/media/sample.mp4)에서 서빙 권장
-         { type: "video", url: "/media/sample.mp4" },
-      ],
+      media: [{ type: "video", url: "/media/sample.mp4" }],
+      author: { id: "u3", nickname: "소정", level: "Lv.5" },
+      attemptsByGrade: [0, 0, 0, 5, 0, 0, 0],
+      clearsByGrade: [0, 0, 0, 0, 0, 0, 0],
    },
-   {
-      id: "p5",
-      media: [
-         { type: "image", url: "https://picsum.photos/id/1027/800/1066" },
-      ],
-   },
-];
+]
+
+const me = { id: "me" } // 내가 로그인했다고 가정
+
+type UserItem = { id: string; name: string; avatar?: string; isFollowing?: boolean } // 유저 정보
 
 // 난이도별 문제배열
 const attempts = [2, 1, 3, 3, 1, 1, 1]
