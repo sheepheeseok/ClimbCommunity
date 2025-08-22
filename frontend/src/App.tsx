@@ -9,6 +9,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import Login from './pages/auth/Login';
 import Navbar from './components/Navbar';
 import MyPage from './pages/my_tap/MyPage';
+import Community from './pages/community_tap/Community';
 
 function App() {
   const isMobile = useMediaQuery({ maxWidth: 768 });
@@ -25,7 +26,8 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
             <Route path="/reset-pw" element={<ResetPassword />} />
-            
+            <Route path="/community" element={<Community/>} />
+
           </Routes>
         </main>
       </BrowserRouter>

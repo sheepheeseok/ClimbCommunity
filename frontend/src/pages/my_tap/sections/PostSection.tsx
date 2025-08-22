@@ -7,6 +7,26 @@ import { usePostModal } from "@/pages/my_tap/hooks/usePostModal";
 import PostModal from "../components/PostModal";
 import EmptyPosts from "@/pages/my_tap/components/EmptyPosts";
 import type { Post } from "@/types/post";
+import { PostComment } from "@/types/comment";
+
+// 댓글 가데이터
+const commentsByPostId: Record<string, PostComment[]> = {
+   p1: [
+      { id: "c1", author: { id: "u9", nickname: "민수", level: "Lv.4" }, createdAt: "2025-08-10T09:15:00Z", content: "동작 리듬 👍" },
+      { id: "c2", author: { id: "u8", nickname: "소정" }, createdAt: "2025-08-10T10:02:00+09:00", content: "라스트 발 위치 팁 궁금!" },
+   ],
+   p2: [
+      { id: "c3", author: { id: "u5", nickname: "지우" }, createdAt: "2025-08-11T11:00:00+09:00", content: "템포 유지 꿀팁 고마워요 🙌" },
+   ],
+   p3: [], // 댓글 없음 케이스
+}
+
+const asLen7 = (arr?: number[]) => {
+   const base = Array(7).fill(0)
+   if (!arr) return base
+   for (let i = 0; i < 7; i++) base[i] = Number(arr[i] ?? 0)
+   return base
+}
 
 export default function PostsSection({
    tab, onTabChange, posts,
@@ -86,15 +106,13 @@ export default function PostsSection({
                   key={selectedId!}                 // 포스트 이동 시 내부 상태 초기화
                   postId={current.id}
                   media={current.media}             // 단일 media 배열
-                  author={current.author ?? {       // author가 없다면 안전 기본값
-                     id: "unknown",
-                     nickname: "알 수 없음",
-                     avatarUrl: undefined,
-                     level: undefined,
-                  }}
-                  currentUserId={null}              
-                  isFollowing={false}
-                  onToggleFollow={() => { }}
+                  author={current.author}
+                  text={current.text}
+                  attemptsByGrade={asLen7(current.attemptsByGrade)}
+                  clearsByGrade={asLen7(current.clearsByGrade)}
+                  createdAt={current.createdAt}
+                  location={current.location}
+                  comments={commentsByPostId[current.id] ?? []}
                />
             ) : null}
          </PostModalShell>
