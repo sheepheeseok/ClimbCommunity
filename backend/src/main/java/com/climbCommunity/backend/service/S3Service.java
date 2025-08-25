@@ -11,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,27 +26,30 @@ public class S3Service {
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
-    public String uploadFile(MultipartFile file, String dirName) {
+    public String uploadFile(MultipartFile file, Long userId, String postDir) {
         validateFile(file);
 
         String originalFilename = file.getOriginalFilename();
         String extension = getExtension(originalFilename);
-        String safeDir = dirName.endsWith("/") ? dirName : dirName + "/";
-        String uniqueFileName = safeDir + UUID.randomUUID() + "." + extension;
+        String safeDir = postDir.endsWith("/") ? postDir : postDir + "/";
+        String uniqueFileName = UUID.randomUUID() + (extension != null && !extension.isBlank() ? "." + extension : "");
+
+        // 최종 key = users/{userId}/posts/{postId}/images/{uuid}.png
+        String key = "users/" + userId + "/" + safeDir + uniqueFileName;
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(file.getContentType());
         metadata.setContentLength(file.getSize());
 
         try (InputStream inputStream = file.getInputStream()) {
-            PutObjectRequest request = new PutObjectRequest(bucket, uniqueFileName, inputStream, metadata)
-                    .withCannedAcl(CannedAccessControlList.PublicRead);
+            PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
             amazonS3.putObject(request);
-            log.info("파일 업로드 성공: {}", uniqueFileName);
-            return amazonS3.getUrl(bucket, uniqueFileName).toString();
+
+            log.info("S3 파일 업로드 성공: {}", key);
+            return key; // key를 DB에 저장 (URL 대신)
         } catch (IOException e) {
-            log.error("S3 파일 업로드 중 IOException 발생", e);
-            throw new RuntimeException("파일 업로드에 실패했습니다.", e);
+            log.error("S3 파일 업로드 실패", e);
+            throw new RuntimeException("파일 업로드 실패", e);
         }
     }
 
@@ -77,4 +82,24 @@ public class S3Service {
         if (index == -1) throw new IllegalArgumentException("올바르지 않은 S3 URL입니다.");
         return fileUrl.substring(index + 5);
     }
+
+    public void deletePostFolder(Long postId) {
+        String prefix = "posts/" + postId + "/";
+
+        ObjectListing listing = amazonS3.listObjects(bucket, prefix);
+        List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>();
+
+        for (S3ObjectSummary summary : listing.getObjectSummaries()) {
+            keys.add(new DeleteObjectsRequest.KeyVersion(summary.getKey()));
+        }
+
+        if (!keys.isEmpty()) {
+            DeleteObjectsRequest deleteRequest = new DeleteObjectsRequest(bucket).withKeys(keys);
+            amazonS3.deleteObjects(deleteRequest);
+            log.info("S3 폴더 삭제 완료: {}", prefix);
+        } else {
+            log.info("삭제할 S3 파일이 없습니다: {}", prefix);
+        }
+    }
+
 }

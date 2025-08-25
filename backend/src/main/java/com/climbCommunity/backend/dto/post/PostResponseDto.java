@@ -13,7 +13,6 @@ import java.util.List;
 @Builder
 public class PostResponseDto {
     private Long id;
-    private String title;
     private String content;
     private Category category;
     private String username;
@@ -26,7 +25,6 @@ public class PostResponseDto {
     public static PostResponseDto fromEntity(Post post) {
         return PostResponseDto.builder()
                 .id(post.getId())
-                .title(post.getTitle())
                 .content(post.getContent())
                 .category(post.getCategory())
                 .username(post.getUser().getUsername())

@@ -23,7 +23,6 @@ public class LikeService {
         return postLikeRepository.findByUser_Id(userId).stream()
                 .map(like -> LikedPostDto.builder()
                         .postId(like.getPost().getId())
-                        .title(like.getPost().getTitle())
                         .likedAt(like.getCreatedAt().toString())
                         .build())
                 .toList();

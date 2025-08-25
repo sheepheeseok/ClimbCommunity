@@ -25,19 +25,6 @@ public class AdminPostController {
 
     private final PostService postService;
 
-    @GetMapping
-    public ResponseEntity<Page<PostResponseDto>> getAllPosts(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) PostStatus status,
-            @RequestParam(required = false) Category category,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-
-        Page<Post> posts = postService.findAllPosts(keyword, status, category, pageable);
-        Page<PostResponseDto> response = posts.map(PostResponseDto::fromEntity);
-
-        return ResponseEntity.ok(response);
-    }
-
 
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long postId) {

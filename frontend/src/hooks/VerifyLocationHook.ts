@@ -14,7 +14,7 @@ export const VerifyLocationHook = () => {
     // ✅ 사용자 주소 불러오기 (address1 + address2 + 동 추출)
     const fetchUserAddress = async () => {
         try {
-            const res = await fetch("http://localhost:8080/api/users/myinfo", {
+            const res = await fetch("http://15.152.143.236:8080/api/users/myinfo", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -33,7 +33,7 @@ export const VerifyLocationHook = () => {
     // 사용자의 인증 된 위치 모두 가져오기
     const fetchVerifiedLocations = async () => {
         try {
-            const res = await fetch("http://localhost:8080/api/users/me/locations", {
+            const res = await fetch("http://15.152.143.236:8080/api/users/me/locations", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -79,7 +79,7 @@ export const VerifyLocationHook = () => {
             const { latitude, longitude } = position.coords;
 
             // ✅ 1. 인증 요청
-            const res = await fetch("http://localhost:8080/api/users/me/verify-location", {
+            const res = await fetch("http://15.152.143.236:8080/api/users/me/verify-location", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

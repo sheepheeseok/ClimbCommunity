@@ -24,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,9 +52,12 @@ public class PostController {
 
         Post post = Post.builder()
                 .user(user)
-                .title(dto.getTitle())
                 .content(dto.getContent())
                 .category(dto.getCategory())
+                .location(dto.getLocation())
+                .date(dto.getDate()) // 문자열이면 파싱 필요
+                .triedProblems(dto.getTriedProblems())
+                .completedProblems(dto.getCompletedProblems())
                 .build();
 
         Post savedPost = postService.savePostWithMedia(post, imageFiles, videoFiles);
@@ -85,25 +89,13 @@ public class PostController {
         return ResponseEntity.ok(PostResponseDto.fromEntity(post));
     }
 
-    // 게시글 수정
-    @PutMapping("/{postId}")
-    public ResponseEntity<PostResponseDto> updatePost(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long postId,
-            @Valid @RequestBody PostRequestDto dto) {
-
-        Post updatedPost = postService.updatePost(
-                postId, dto.getTitle(), dto.getContent(), dto.getCategory(), userPrincipal.getUserId());
-        return ResponseEntity.ok(PostResponseDto.fromEntity(updatedPost));
-    }
-
     // 게시글 삭제
     @DeleteMapping("/{postId}")
     public ResponseEntity<Void> deletePost(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long postId) {
 
-        postService.deletePost(postId, userPrincipal.getUserId());
+        postService.deletePost(postId, userPrincipal.getId());
         return ResponseEntity.noContent().build();
     }
 }

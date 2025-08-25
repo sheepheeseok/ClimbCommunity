@@ -3,19 +3,25 @@
 import { useForm } from "react-hook-form";
 
 export interface UploadFormData {
+   title: string;
    content: string;
+   category: string;
    date?: string;
    location?: string;
-   problems?: Record<string, number>; // 예: { red: 1, green: 3 }
+   triedProblems: Record<string, number>;     // 시도 문제 수
+   completedProblems: Record<string, number>; // 완등 문제 수
 }
 
 export function useUploadForm() {
    return useForm<UploadFormData>({
       defaultValues: {
+         title: "",     // 추가
          content: "",
-         date: "",
+         category: "",  // 추가
          location: "",
-         problems: {},
+         date: "",
+         triedProblems: {},
+         completedProblems: {},
       },
    });
 }

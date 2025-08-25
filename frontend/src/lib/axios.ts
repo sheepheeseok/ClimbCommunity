@@ -1,8 +1,17 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "http://localhost:8080", // 백엔드 주소
-    withCredentials: true, // 쿠키 전송 허용
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://15.168.142.176:8080",
+    // withCredentials: false // ❌ Bearer만 쓸 때는 필요 없음
+});
+
+// 요청마다 localStorage에서 토큰 읽어 Bearer 헤더 붙이기
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem("accessToken");
+    if (token && config.headers) {
+        (config.headers as any).Authorization = `Bearer ${token}`;
+    }
+    return config;
 });
 
 export default api;

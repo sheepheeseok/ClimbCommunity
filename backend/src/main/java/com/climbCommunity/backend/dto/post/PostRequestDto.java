@@ -8,18 +8,23 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+import java.util.Map;
+
 @Getter
 @Setter
 public class PostRequestDto {
     private Long userId;
-
-    @NotBlank(message = "제목은 필수입니다.")
-    @Size(max = 150, message = "제목은 최대 150자입니다.")
-    private String title;
 
     @NotBlank(message = "내용은 필수입니다.")
     private String content;
 
     @NotNull
     private Category category;
+
+    private String location;
+    private LocalDate date;
+
+    private Map<String, Integer> triedProblems;
+    private Map<String, Integer> completedProblems;
 }

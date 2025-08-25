@@ -32,6 +32,7 @@ public class GroupComment {
     @JoinColumn(name = "parent_id")
     private GroupComment parent;
 
+    @Builder.Default
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<GroupComment> replies = new ArrayList<>();
 

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["vite/client"],
     "target": "es2022",
     "lib": ["DOM", "ES2022"],
     "module": "esnext",                                /* Specify what module code is generated. */

@@ -7,6 +7,7 @@ import UploadStepForm from "./components/UploadStepForm";
 
 
 export default function UploadModal({ trigger }: { trigger: React.ReactNode }) {
+
    const { isOpen, setOpen, step, setStep, files, form, removeFile, handleUpload, dropzone } = useUploadModal();
    const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = dropzone;
 

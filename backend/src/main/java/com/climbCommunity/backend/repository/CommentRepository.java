@@ -1,6 +1,7 @@
 package com.climbCommunity.backend.repository;
 
 import com.climbCommunity.backend.entity.Comment;
+import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.enums.CommentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,4 +26,5 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByParentComment_IdAndStatus(Long parentCommentId, CommentStatus commentStatus);
     List<Comment> findByUser_Id(Long userId);
     int countByUser_Id(Long userId);
+    void deleteByPost(Post post);
 }

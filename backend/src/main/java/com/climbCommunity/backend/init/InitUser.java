@@ -2,6 +2,7 @@ package com.climbCommunity.backend.init;
 
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
+import com.climbCommunity.backend.entity.enums.Gender;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
@@ -45,6 +46,7 @@ public class InitUser {
                 .grade(Grade.White)
                 .status(Status.active)
                 .role(Role.ADMIN)
+                .gender(Gender.MALE)
                 .profileImage(null)
                 .build();
 

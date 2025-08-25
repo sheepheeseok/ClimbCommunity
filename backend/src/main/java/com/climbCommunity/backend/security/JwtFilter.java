@@ -28,9 +28,13 @@ public class JwtFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // ✅ 쿠키에서 accessToken 추출
+        // 1. 토큰 추출 (쿠키 or 헤더)
         String token = extractTokenFromCookies(request);
+        if (token == null) {
+            token = extractTokenFromAuthorizationHeader(request);
+        }
 
+        // 2. 토큰 검증
         if (token != null && jwtUtil.validateToken(token)) {
             String userId = jwtUtil.extractUserId(token);
 
@@ -50,16 +54,24 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    // ✅ 쿠키에서 accessToken 꺼내는 유틸 함수
+    // ✅ Authorization 헤더에서 Bearer 토큰 추출
+    private String extractTokenFromAuthorizationHeader(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7); // "Bearer " 제거 후 토큰만 반환
+        }
+        return null;
+    }
+
+    // ✅ 기존 쿠키에서 accessToken 추출
     private String extractTokenFromCookies(HttpServletRequest request) {
         if (request.getCookies() == null) return null;
-
         for (Cookie cookie : request.getCookies()) {
             if ("accessToken".equals(cookie.getName())) {
                 return cookie.getValue();
             }
         }
-
         return null;
     }
+
 }

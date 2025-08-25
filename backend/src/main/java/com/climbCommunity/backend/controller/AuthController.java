@@ -49,6 +49,7 @@ public class AuthController {
         return ResponseEntity.ok(loginResponse); // or return new ResponseEntity<>(loginResponse, HttpStatus.OK);
     }
 
+
     @PostMapping("/findUserId")
     public ResponseEntity<FindUserIdResponse> findUserId(@RequestBody FindUserIdRequest request) {
         FindUserIdResponse response = authService.findUserId(request);
