@@ -31,14 +31,14 @@ export function LoginHook() {
         setLoading(true);
 
         try {
-            const res = await api.post("http://localhost:8080/api/auth/login", form);
-            const { accessToken } = res.data;
+            const res = await api.post("/api/auth/login", form);
 
-            localStorage.setItem("accessToken", accessToken);
+            localStorage.setItem("user", JSON.stringify(res.data));
+
+            window.dispatchEvent(new Event("storage"));
 
             alert("로그인 성공");
             navigate("/");
-            console.log("로그인 정보:", res.data);
             setForm({ userId: "", password: "" });
         } catch (err) {
             setErrorMsg("❌ 아이디 또는 비밀번호가 올바르지 않습니다.");

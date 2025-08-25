@@ -2,6 +2,7 @@ package com.climbCommunity.backend.controller;
 
 import com.climbCommunity.backend.dto.login.LoginReqeustDto;
 import com.climbCommunity.backend.dto.login.LoginResponseDto;
+import com.climbCommunity.backend.dto.login.UserInfoDto;
 import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.service.AuthService;
 import com.climbCommunity.backend.service.UserService;
@@ -29,26 +30,43 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(
+    public ResponseEntity<UserInfoDto> login(
             @RequestBody LoginReqeustDto request,
             HttpServletResponse response
     ) {
-        LoginResponseDto loginResponse = authService.login(request); // 토큰 포함 DTO
+        LoginResponseDto loginResponse = authService.login(request); // accessToken 생성
 
-        // 토큰을 쿠키에 저장
+        // accessToken을 HttpOnly 쿠키에 저장
         ResponseCookie cookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
                 .httpOnly(true)
-                .secure(false) // 배포 시 true + HTTPS 필요
+                .secure(true) // HTTPS 환경에서 true (로컬 테스트면 false 가능)
                 .path("/")
-                .maxAge(86400) // 1일
-                .sameSite("Lax") // "None" 사용 시 secure=true 필수
+                .sameSite("None") // 크로스도메인 허용 (secure=true 필수)
+                .maxAge(60 * 60 * 24) // 1일
                 .build();
 
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return ResponseEntity.ok(loginResponse); // or return new ResponseEntity<>(loginResponse, HttpStatus.OK);
+        // 응답 바디에는 사용자 정보만 내려주면 됨
+        return ResponseEntity.ok(new UserInfoDto(
+                loginResponse.getUserId(),
+                loginResponse.getUsername()
+        ));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .sameSite("None")
+                .maxAge(0) // 즉시 만료
+                .build();
+
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return ResponseEntity.ok().build();
+    }
 
     @PostMapping("/findUserId")
     public ResponseEntity<FindUserIdResponse> findUserId(@RequestBody FindUserIdRequest request) {

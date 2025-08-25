@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://15.168.142.176:8080",
-    // withCredentials: false // ❌ Bearer만 쓸 때는 필요 없음
+    withCredentials: true
 });
 
 // 요청마다 localStorage에서 토큰 읽어 Bearer 헤더 붙이기
