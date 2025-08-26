@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { UnderlineTabs, UnderlineTabsContent } from "@/components/UnderlineTabs";
 import RecordThumbnail from "@/pages/my_tap/components/RecordThumbnail";
@@ -6,39 +6,32 @@ import PostModalShell from "@/pages/my_tap/components/PostModalShell";
 import { usePostModal } from "@/pages/my_tap/hooks/usePostModal";
 import PostModal from "../components/PostModal";
 import EmptyPosts from "@/pages/my_tap/components/EmptyPosts";
-import type { Post } from "@/types/post";
-import { PostComment } from "@/types/comment";
+import { useMyPageData } from "../data/useMyPageData";
 
-// 댓글 가데이터
-const commentsByPostId: Record<string, PostComment[]> = {
-   p1: [
-      { id: "c1", author: { id: "u9", nickname: "민수", level: "Lv.4" }, createdAt: "2025-08-10T09:15:00Z", content: "동작 리듬 👍" },
-      { id: "c2", author: { id: "u8", nickname: "소정" }, createdAt: "2025-08-10T10:02:00+09:00", content: "라스트 발 위치 팁 궁금!" },
-   ],
-   p2: [
-      { id: "c3", author: { id: "u5", nickname: "지우" }, createdAt: "2025-08-11T11:00:00+09:00", content: "템포 유지 꿀팁 고마워요 🙌" },
-   ],
-   p3: [], // 댓글 없음 케이스
-}
-
+// 숫자배열 7칸 보정
 const asLen7 = (arr?: number[]) => {
-   const base = Array(7).fill(0)
-   if (!arr) return base
-   for (let i = 0; i < 7; i++) base[i] = Number(arr[i] ?? 0)
-   return base
-}
+   const base = Array(7).fill(0);
+   if (!arr) return base;
+   for (let i = 0; i < 7; i++) base[i] = Number(arr[i] ?? 0);
+   return base;
+};
 
-export default function PostsSection({
-   tab, onTabChange, posts,
-}: {
-   tab: "posts" | "tab2";
-   posts: Post[];
-   onTabChange: (v: "posts" | "tab2") => void;
-}) {
-   const { isOpen, selectedId, index, open, close, goPrev, goNext } = usePostModal(posts);
-   const current = index >= 0 ? posts[index] : null;
+export default function PostsSection() {
+   const { data, ready } = useMyPageData();
+
+   // UI 상태 훅들
+   const [tab, setTab] = useState<"posts" | "tab2">("posts");
+
+   // 시드/데이터
+   const posts = data.posts; // ready=false여도 [] 보장
+   const commentsByPostId = data.commentsByPostId;
    const hasPosts = posts.length > 0;
 
+   // 모달 훅 (항상 호출)
+   const { isOpen, selectedId, index, open, close, goPrev, goNext } = usePostModal(posts);
+   const current = index >= 0 ? posts[index] : null;
+
+   // 키보드 단축키
    useEffect(() => {
       if (!isOpen) return;
       const onKey = (e: KeyboardEvent) => {
@@ -55,14 +48,20 @@ export default function PostsSection({
          <UnderlineTabs
             items={[{ value: "posts", label: "운동 기록" }, { value: "tab2", label: "탭2" }]}
             value={tab}
-            onValueChange={(v) => onTabChange(v as any)}
+            onValueChange={(v) => setTab(v as "posts" | "tab2")}
             layoutId="underline-main"
             className="w-full"
          >
             <UnderlineTabsContent value="posts">
                <Card className="border-none p-0">
                   <CardContent className="p-0 md:p-3">
-                     {hasPosts ? (
+                     {!ready ? (
+                        // 로딩 스켈레톤
+                        <div className="p-4">
+                           <div className="h-40 rounded-lg bg-muted animate-pulse" />
+                        </div>
+                     ) : hasPosts ? (
+                        // 실제 목록
                         <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
                            {posts.map((p) => (
                               <RecordThumbnail
@@ -76,6 +75,7 @@ export default function PostsSection({
                            ))}
                         </div>
                      ) : (
+                        // 빈 상태
                         <EmptyPosts />
                      )}
                   </CardContent>
@@ -83,16 +83,15 @@ export default function PostsSection({
             </UnderlineTabsContent>
 
             <UnderlineTabsContent value="tab2">
-               <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-                  아직 정해지지 않은 영역입니다.
-               </CardContent></Card>
+               <Card>
+                  <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                     아직 정해지지 않은 영역입니다.
+                  </CardContent>
+               </Card>
             </UnderlineTabsContent>
          </UnderlineTabs>
 
-
-
-
-         {/* ✅ 모달 쉘 + 내부 PostModal 렌더 */}
+         {/* 모달 */}
          <PostModalShell
             open={isOpen}
             onOpenChange={(v) => !v && close()}
@@ -103,9 +102,9 @@ export default function PostsSection({
          >
             {current ? (
                <PostModal
-                  key={selectedId!}                 // 포스트 이동 시 내부 상태 초기화
+                  key={selectedId!}
                   postId={current.id}
-                  media={current.media}             // 단일 media 배열
+                  media={current.media}
                   author={current.author}
                   text={current.text}
                   attemptsByGrade={asLen7(current.attemptsByGrade)}
