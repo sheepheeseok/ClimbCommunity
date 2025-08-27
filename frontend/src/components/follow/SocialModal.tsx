@@ -5,23 +5,22 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { UnderlineTabs, UnderlineTabsContent } from "@/components/UnderlineTabs"
 import type { UserLite } from "./UserListItem"
 import SocialListContainer from "./SocialListContainer"
+import { useMyPageData } from "@/pages/my_tap/data/useMyPageData"
 
 type Props = {
   open: boolean
   defaultTab?: "followers" | "following"
   onOpenChange: (v: boolean) => void
-  followers: UserLite[]
-  following: UserLite[]
-  onCountChange?: (delta: 1 | -1) => void
+  onCountChange?: (delta: 1 | -1) => void   // 팔로우 숫자 변경
 }
 
 export default function SocialModal({
-  open, defaultTab = "followers", onOpenChange, followers, following, onCountChange
+  open, defaultTab = "followers", onOpenChange, onCountChange
 }: Props) {
-  const [tab, setTab] = useState<"followers" | "following">(defaultTab)
-  useEffect(() => { if (open) setTab(defaultTab) }, [open, defaultTab])
+  const [tab, setTab] = useState<"followers" | "following">(defaultTab);
+  const data = useMyPageData();   // 데이터 가져오기
 
-  const list = tab === "followers" ? followers : following
+  useEffect(() => { if (open) setTab(defaultTab) }, [open, defaultTab])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,8 +48,8 @@ export default function SocialModal({
 
         <ScrollArea className="h-auto">
           <SocialListContainer
-            key={tab} // 탭 바뀔 때 내부 상태 초기화
-            initialUsers={list}
+            key={tab}                // 탭 바뀔 때 내부 상태 초기화
+            source={tab}             // "followers" | "following"
             onCountChange={onCountChange}
           />
         </ScrollArea>

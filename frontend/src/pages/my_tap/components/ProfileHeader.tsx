@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Pencil } from "lucide-react"  // 편집 아이콘
 
 type Props = {
-   name: string
-   levelLabel: string
+   name?: string
+   levelLabel?: string
    bio?: string
    followerCount: number
    followingCount: number
@@ -16,9 +16,10 @@ type Props = {
 }
 
 export default function ProfileHeader({
-   name, levelLabel, bio, followerCount, followingCount, canEdit, onEdit,
+   name = "", levelLabel = "", bio = "", followerCount, followingCount, canEdit, onEdit,
    onOpenFollowers, onOpenFollowing,
 }: Props) {
+   const firstChar = (name?.[0] ?? "?");
    return (
       <div className="flex items-start gap-8">
          <Avatar className="h-24 w-24">
