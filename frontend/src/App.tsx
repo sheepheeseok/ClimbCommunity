@@ -1,39 +1,23 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useState } from 'react'
-import { useMediaQuery } from "react-responsive";
-import './App.css'
-import Home from './pages/home_tap/Home'
-import Header from "@/components/Header";
-import SignUp from './pages/auth/SignUp';
-import ResetPassword from './pages/auth/ResetPassword';
-import Login from './pages/auth/Login';
-import Navbar from './components/Navbar';
-import MyPage from './pages/my_tap/MyPage';
-import Community from './pages/community_tap/Community';
-import GymDetail from './pages/gym_tap/GymDetail';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import SignUp from "@/pages/SignUp";
+import FindAccount from "@/pages/FindAccount";
+import {Profile} from "@/pages/Profile";
 
 function App() {
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-
-  return (
-    <>
-      <BrowserRouter>
-        {isMobile && <Header />}
-        <Navbar />
-        <main className="min-h-screen flex flex-col items-center justify-start">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/mypage" element={<MyPage />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-pw" element={<ResetPassword />} />
-            <Route path="/community" element={<Community />} />
-            <Route path="/gyms" element={<GymDetail />} />
-          </Routes>
-        </main>
-      </BrowserRouter>
-    </>
-  )
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Layout><Home/></Layout>} />
+                <Route path="/login" element={<Login/>} />
+                <Route path="/signup" element={<SignUp/>} />
+                <Route path="/findAccount" element={<FindAccount/>} />
+                <Route path="/profile" element={<Layout><Profile/></Layout>} />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
-export default App
+export default App;

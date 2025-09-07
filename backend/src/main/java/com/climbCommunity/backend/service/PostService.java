@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.PostImage;
@@ -57,6 +58,31 @@ public class PostService {
 
     public Page<Post> getPostsByCategory(Category category, Pageable pageable){
         return postRepository.findByCategory(category, pageable);
+    }
+
+    public PostResponseDto toDto(Post post) {
+        long commentCount = commentRepository.countByPost_Id(post.getId());
+
+        return PostResponseDto.builder()
+                .id(post.getId())
+                .content(post.getContent())
+                .category(post.getCategory())
+                .username(post.getUser().getUsername())
+                .userId(post.getUser().getUserId())
+                .status(post.getStatus().name())
+                .createdAt(post.getCreatedAt().toString())
+                .updatedAt(post.getUpdatedAt() != null ? post.getUpdatedAt().toString() : null)
+                .imageUrls(post.getImages().stream()
+                        .map(img -> s3Service.getFileUrl(img.getImageUrl())) // ✅ 풀 URL 변환
+                        .toList())
+                .videoUrls(post.getVideos().stream()
+                        .map(video -> s3Service.getFileUrl(video.getVideoUrl())) // ✅ 풀 URL 변환
+                        .toList())
+                .thumbnailUrl(post.getThumbnailUrl())   // ✅ 썸네일
+                .location(post.getLocation())           // ✅ location 매핑
+                .completedProblems(post.getCompletedProblems()) // ✅ 완등 문제 매핑
+                .commentCount(commentCount)
+                .build();
     }
 
     // 게시글 단일 조회
@@ -132,16 +158,24 @@ public class PostService {
     }
 
     @Transactional
-    public Post savePostWithMedia(Post post, List<MultipartFile> images, List<MultipartFile> videos) {
+    public Post savePostWithMedia(Post post,
+                                  List<MultipartFile> images,
+                                  List<MultipartFile> videos,
+                                  Integer thumbnailIndex) {
         Post savedPost = postRepository.save(post);
         Long postId = savedPost.getId();
         Long userId = savedPost.getUser().getId(); // 작성자 userId
+
+        // 업로드된 파일들의 key 리스트 (썸네일 선택용)
+        List<String> uploadedKeys = new ArrayList<>();
 
         // === 이미지 업로드 ===
         if (images != null && !images.isEmpty()) {
             String imageDir = "posts/" + postId + "/images";
             for (MultipartFile file : images) {
                 String key = s3Service.uploadFile(file, userId, imageDir);
+                uploadedKeys.add(key);
+
                 PostImage postImage = PostImage.builder()
                         .post(savedPost)
                         .imageUrl(key) // DB에는 key 저장 (URL 대신)
@@ -155,6 +189,8 @@ public class PostService {
             String videoDir = "posts/" + postId + "/videos";
             for (MultipartFile file : videos) {
                 String key = s3Service.uploadFile(file, userId, videoDir);
+                uploadedKeys.add(key);
+
                 PostVideo postVideo = PostVideo.builder()
                         .post(savedPost)
                         .videoUrl(key) // DB에는 key 저장
@@ -163,7 +199,18 @@ public class PostService {
             }
         }
 
-        return savedPost;
+        // === 대표 썸네일 지정 ===
+        if (thumbnailIndex != null &&
+                thumbnailIndex >= 0 &&
+                thumbnailIndex < uploadedKeys.size()) {
+            savedPost.setThumbnailUrl(uploadedKeys.get(thumbnailIndex));
+        } else if (!uploadedKeys.isEmpty()) {
+            // fallback: 첫 번째 업로드 파일
+            savedPost.setThumbnailUrl(uploadedKeys.get(0));
+        }
+
+        return postRepository.save(savedPost);
     }
+
 
 }

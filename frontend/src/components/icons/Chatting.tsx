@@ -1,8 +1,9 @@
 export function Chatting({ className }: { className?: string }) {
    return (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-         <path d="M32.0002 4L16.8335 19.1667" stroke="black" strokeWidth="2.09124" strokeLinecap="round" strokeLinejoin="round" />
-         <path d="M32 4L22.2 32L16.6 19.4L4 13.8L32 4Z" stroke="black" strokeWidth="2.09124" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+           <path fillRule="evenodd" clipRule="evenodd"
+                 d="M20.8162 3.18517L3.65232 9.39127L9.37043 12.7008L14.4125 7.65743C14.6682 7.40184 15.015 7.25833 15.3766 7.25845C15.7382 7.25858 16.0849 7.40234 16.3405 7.65811C16.5961 7.91388 16.7396 8.26071 16.7395 8.62229C16.7394 8.98387 16.5956 9.3306 16.3398 9.58619L11.2965 14.6296L14.6087 20.3463L20.8162 3.18517ZM21.2565 0.126426C22.8853 -0.463787 24.4638 1.11466 23.8736 2.74353L16.6738 22.6513C16.0822 24.2843 13.8522 24.4833 12.9812 22.9798L8.5962 15.4038L1.02021 11.0188C-0.483262 10.1478 -0.284253 7.91778 1.34871 7.3262L21.2565 0.126426Z"
+                 fill="black"/>
+       </svg>
    );
 }

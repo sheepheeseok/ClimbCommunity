@@ -31,7 +31,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/users/register").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/users/register", "/api/auth/logout", "/api/auth/check-duplicate", "/api/auth/findUserId",
+                                "/api/auth/findPassword" ).permitAll()
                         .requestMatchers("/api/posts/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -43,13 +44,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://56.155.46.196:5173")); // ✅ 프론트엔드 도메인
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*" , "http://15.152.47.4:*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // 인증 쿠키 허용 시 true 설정
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config); // 모든 경로에 대해 적용
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 

@@ -1,6 +1,4 @@
 package com.climbCommunity.backend.entity;
-
-import com.climbCommunity.backend.entity.enums.Gender;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
@@ -51,10 +49,6 @@ public class User {
 
     @Column(nullable = true)
     private LocalDate birthdate;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private Gender gender;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

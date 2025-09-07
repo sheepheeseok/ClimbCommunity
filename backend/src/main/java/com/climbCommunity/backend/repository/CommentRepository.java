@@ -27,4 +27,5 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByUser_Id(Long userId);
     int countByUser_Id(Long userId);
     void deleteByPost(Post post);
+    long countByPost_Id(Long postId);
 }

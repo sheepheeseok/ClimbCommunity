@@ -1,10 +1,16 @@
 import { useState, ChangeEvent, FormEvent } from "react";
-import api from "@/lib/axios";
+import api, { setAccessToken } from "@/lib/axios";
 import { useNavigate } from "react-router-dom";
 
 interface LoginForm {
     userId: string;
     password: string;
+}
+
+interface LoginResponse {
+    userId: string;
+    username: string;
+    accessToken: string; // ✅ 백엔드에서 내려줄 토큰
 }
 
 export function LoginHook() {
@@ -31,9 +37,16 @@ export function LoginHook() {
         setLoading(true);
 
         try {
-            const res = await api.post("/api/auth/login", form);
+            const res = await api.post<LoginResponse>("/api/auth/login", form);
 
-            localStorage.setItem("user", JSON.stringify(res.data));
+            // ✅ accessToken 저장 → axios 인터셉터에서 Authorization 헤더 자동 추가
+            setAccessToken(res.data.accessToken);
+
+            // ✅ 사용자 정보는 localStorage에도 저장
+            localStorage.setItem("user", JSON.stringify({
+                userId: res.data.userId,
+                username: res.data.username,
+            }));
 
             window.dispatchEvent(new Event("storage"));
 
@@ -41,7 +54,7 @@ export function LoginHook() {
             navigate("/");
             setForm({ userId: "", password: "" });
         } catch (err) {
-            setErrorMsg("❌ 아이디 또는 비밀번호가 올바르지 않습니다.");
+            setErrorMsg("아이디 또는 비밀번호가 올바르지 않습니다.");
         } finally {
             setLoading(false);
         }

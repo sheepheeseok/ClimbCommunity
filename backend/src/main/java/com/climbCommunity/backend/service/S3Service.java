@@ -102,4 +102,8 @@ public class S3Service {
         }
     }
 
+    public String getFileUrl(String key) {
+        return amazonS3.getUrl(bucket, key).toString();
+    }
+
 }

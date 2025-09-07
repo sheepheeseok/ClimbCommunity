@@ -1,14 +1,14 @@
-/*
-Tailwind & Plugins
-*/
-@import "tailwindcss";
-@import "tw-animate-css";
-
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 /*
   다크모드
 */
 @custom-variant dark (&:is(.dark *));
 
+body {
+  @apply font-sans;
+}
 /*
   Root Theme Variables
 */
@@ -139,14 +139,6 @@ Tailwind & Plugins
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/*
-  base styles
-*/
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
   /* 모바일에서만 헤더(상단 56px) + 네비(하단 56px) 만큼 여백 */
   @media (max-width: 768px) {
     body {
@@ -165,6 +157,10 @@ Tailwind & Plugins
     font-size: 1rem;
   }
 
+button {
+  @apply cursor-pointer;
+}
+
   a {
     @apply font-medium text-blue-600 hover:text-blue-500;
     text-decoration: none;
@@ -174,8 +170,3 @@ Tailwind & Plugins
     font-size: 3.2em;
     line-height: 1.1;
   }
-
-  button {
-    @apply rounded-lg border border-transparent px-4 py-2 text-base font-medium bg-neutral-900 hover:border-blue-500 focus:outline-none focus-visible:ring-4;
-  }
-}

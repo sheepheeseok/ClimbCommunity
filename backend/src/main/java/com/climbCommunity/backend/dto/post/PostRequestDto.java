@@ -27,4 +27,6 @@ public class PostRequestDto {
 
     private Map<String, Integer> triedProblems;
     private Map<String, Integer> completedProblems;
+
+    private Integer thumbnailIndex;
 }

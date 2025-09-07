@@ -35,9 +35,6 @@ import java.util.stream.Collectors;
 public class PostController {
     private final PostService postService;
     private final UserService userService;
-    private final S3Service s3Service;
-    private final PostVideoService postVideoService;
-    private final PostImageService postImageService;
 
     // 게시글 등록
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -56,11 +53,12 @@ public class PostController {
                 .category(dto.getCategory())
                 .location(dto.getLocation())
                 .date(dto.getDate()) // 문자열이면 파싱 필요
-                .triedProblems(dto.getTriedProblems())
                 .completedProblems(dto.getCompletedProblems())
                 .build();
 
-        Post savedPost = postService.savePostWithMedia(post, imageFiles, videoFiles);
+        Integer thumbnailIndex = dto.getThumbnailIndex();
+
+        Post savedPost = postService.savePostWithMedia(post, imageFiles, videoFiles, thumbnailIndex);
         return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost));
     }
 
@@ -71,14 +69,11 @@ public class PostController {
             @RequestParam(value = "category", required = false) Category category,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Page<Post> posts;
-        if (category != null) {
-            posts = postService.getPostsByCategory(category, pageable);
-        } else {
-            posts = postService.getAllPosts(pageable);
-        }
+        Page<Post> posts = (category != null)
+                ? postService.getPostsByCategory(category, pageable)
+                : postService.getAllPosts(pageable);
 
-        Page<PostResponseDto> response = posts.map(PostResponseDto::fromEntity);
+        Page<PostResponseDto> response = posts.map(postService::toDto);
         return ResponseEntity.ok(response);
     }
 
@@ -86,7 +81,7 @@ public class PostController {
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long postId) {
         Post post = postService.getPostById(postId);
-        return ResponseEntity.ok(PostResponseDto.fromEntity(post));
+        return ResponseEntity.ok(postService.toDto(post));
     }
 
     // 게시글 삭제

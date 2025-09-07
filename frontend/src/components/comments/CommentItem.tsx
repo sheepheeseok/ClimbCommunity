@@ -1,58 +1,144 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { format, formatDistanceToNowStrict } from "date-fns"
-import { ko } from "date-fns/locale"
-import type { PostComment } from "@/types/comment"
+import { useState } from "react";
+import { timeAgo } from "@/utils/timeAgo";
+import type { Comment } from "./types";
+import CommentActionsModal from "../../modals/CommentActionsModal";
+import { MoreHorizontal } from "lucide-react";
+import api from "@/lib/axios";
+import CommentReportModal from "@/modals/CommentReportModal";
+import ConfirmationModal from "@/modals/ConfirmationModal";
 
 type Props = {
-   comment: PostComment
-   // 옵션들 (필요시 확장)
-   compact?: boolean               // 여백을 조금 줄여서 렌더
-}
+    comment: Comment;
+    onReply: (comment: Comment) => void;
+    postId: number;
+    onDeleted: () => void;
+};
 
-export default function CommentItem({ comment, compact = false }: Props) {
-   const d = new Date(comment.createdAt)
-   const timeAgo = isNaN(d.getTime())
-      ? ""
-      : formatDistanceToNowStrict(d, { addSuffix: true, locale: ko })
-   const fullTime = isNaN(d.getTime()) ? "" : format(d, "yyyy.MM.dd HH:mm", { locale: ko })
+export default function CommentItem({ comment, onReply, postId, onDeleted }: Props) {
+    const [showReplies, setShowReplies] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
-   return (
-      <div className={`flex gap-3 ${compact ? "py-2" : "py-3"}`}>
-         <Avatar className="h-8 w-8">
-            <AvatarImage src={comment.author.avatarUrl} alt={comment.author.nickname} />
-            <AvatarFallback>{initials(comment.author.nickname)}</AvatarFallback>
-         </Avatar>
+    const storedUser = localStorage.getItem("user");
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const isOwner = currentUser?.userId === comment.userId;
 
-         <div className="min-w-0 flex-1">
-            {/* 헤더: 닉네임 · 레벨 · 시각 */}
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-               <span className="font-medium text-foreground">{comment.author.nickname}</span>
-               {comment.author.level && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                     {comment.author.level}
-                  </Badge>
-               )}
-               {timeAgo && (
-                  <>
-                     <span className="opacity-50">•</span>
-                     <time title={fullTime} dateTime={comment.createdAt}>
-                        {timeAgo}
-                     </time>
-                  </>
-               )}
-            </div>
+    const handleDelete = async () => {
+        try {
+            await api.delete(`/api/posts/${postId}/comments/${comment.id}`);
+            console.log("댓글 삭제 성공:", comment.id);
+            onDeleted(); // ✅ 부모(PostDetailModal)에서 refreshKey 증가
+        } catch (err) {
+            console.error("댓글 삭제 실패:", err);
+        }
+    };
+
+    return (
+        <div className="flex items-start space-x-3 group">
+            {/* 프로필 */}
+            <img
+                src={
+                    comment.profileImage ||
+                    "https://ui-avatars.com/api/?name=JD&background=6366f1&color=fff"
+                }
+                alt={comment.userId}
+                className="w-8 h-8 rounded-full"
+            />
 
             {/* 본문 */}
-            <div className="mt-1 text-sm whitespace-pre-line break-words">
-               {comment.content}
-            </div>
-         </div>
-      </div>
-   )
-}
+            <div className="flex-1">
+                {/* 닉네임 + 내용 */}
+                <div>
+                    <span className="font-semibold text-sm text-black mr-1">
+                        {comment.userId}
+                    </span>
+                    <span className="text-gray-800 text-[15px]">{comment.content}</span>
+                </div>
 
-function initials(name: string) {
-   const p = name.trim().split(/\s+/)
-   return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase()
+                {/* 메타 정보 + ⋯ 버튼 */}
+                <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                    <span>{timeAgo(comment.createdAt)}</span>
+                    {comment.likeCount > 0 && (
+                        <span>좋아요 {comment.likeCount}개</span>
+                    )}
+                    <button
+                        className="font-medium"
+                        onClick={() => onReply(comment)}
+                    >
+                        답글 달기
+                    </button>
+
+                    {/* ⋯ 버튼 (hover 시 표시) */}
+                    <button
+                        onClick={() => setModalOpen(true)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                    >
+                        <MoreHorizontal size={16} className="text-gray-500" />
+                    </button>
+                </div>
+
+                {/* ── 답글 보기 버튼 */}
+                {comment.replies && comment.replies.length > 0 && (
+                    <button
+                        onClick={() => setShowReplies(!showReplies)}
+                        className="flex items-center space-x-2 text-xs font-semibold text-gray-500 mt-3"
+                    >
+                        <span className="text-gray-400">──</span>
+                        <span>
+                            {showReplies
+                                ? "답글 숨기기"
+                                : `답글 보기(${comment.replies.length}개)`}
+                        </span>
+                    </button>
+                )}
+
+                {/* 대댓글 목록 */}
+                {showReplies &&
+                    comment.replies &&
+                    comment.replies.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                            {comment.replies.map((reply) => (
+                                <CommentItem
+                                    key={reply.id}
+                                    comment={reply}
+                                    onReply={onReply}
+                                    postId={postId}
+                                    onDeleted={onDeleted}
+                                />
+                            ))}
+                        </div>
+                    )}
+            </div>
+
+            {/* 신고/삭제 모달 */}
+            <CommentActionsModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                isOwner={isOwner}
+                onDelete={handleDelete}
+                onReport={() => {
+                    setModalOpen(false);
+                    setReportOpen(true);
+                }}
+            />
+
+            <CommentReportModal
+                isOpen={reportOpen}
+                onClose={() => setReportOpen(false)}
+                postId={postId}
+                commentId={comment.id}
+                onReported={() => {
+                    setReportOpen(false);
+                    setConfirmOpen(true);
+                }}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                userId={comment.userId}
+            />
+        </div>
+    );
 }

@@ -30,28 +30,24 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserInfoDto> login(
+    public ResponseEntity<LoginResponseDto> login(
             @RequestBody LoginReqeustDto request,
             HttpServletResponse response
     ) {
         LoginResponseDto loginResponse = authService.login(request); // accessToken 생성
 
-        // accessToken을 HttpOnly 쿠키에 저장
+        // accessToken을 HttpOnly 쿠키에도 저장
         ResponseCookie cookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
                 .httpOnly(true)
-                .secure(true) // HTTPS 환경에서 true (로컬 테스트면 false 가능)
+                .secure(false)   // 개발환경: false
+                .sameSite("Lax") // 개발환경: 반드시 Lax
                 .path("/")
-                .sameSite("None") // 크로스도메인 허용 (secure=true 필수)
-                .maxAge(60 * 60 * 24) // 1일
+                .maxAge(60 * 60 * 24)
                 .build();
-
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        // 응답 바디에는 사용자 정보만 내려주면 됨
-        return ResponseEntity.ok(new UserInfoDto(
-                loginResponse.getUserId(),
-                loginResponse.getUsername()
-        ));
+        // ✅ 응답 바디에 토큰 + 사용자 정보 같이 내려주기
+        return ResponseEntity.ok(loginResponse);
     }
 
     @PostMapping("/logout")

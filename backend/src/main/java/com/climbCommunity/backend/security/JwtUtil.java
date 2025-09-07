@@ -5,8 +5,6 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.SignatureException;
-
 import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Date;
@@ -25,25 +23,20 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-    // JWT 토큰 생성
+    // ✅ JWT 토큰 생성
     public String generateToken(String userId) {
         return Jwts.builder()
                 .setSubject(userId)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // JWT 토큰에서 이메일 추출
-    public String extractUserId(String token) {
-        return getClaims(token).getSubject();
-    }
-
-    // JWT 유효성 검사
+    // ✅ JWT 유효성 검사
     public boolean validateToken(String token) {
         try {
-            getClaims(token);
+            extractAllClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
             System.out.println("JWT 만료됨: " + e.getMessage());
@@ -59,10 +52,16 @@ public class JwtUtil {
         return false;
     }
 
-    // 클레임 추출
-    private Claims getClaims(String token) {
-        return Jwts.parser()
+    // ✅ userId(subject) 추출
+    public String extractUserId(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    // ✅ Claims 추출 (iat, exp 등 포함)
+    public Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
     }

@@ -14,6 +14,5 @@ public class UserRegisterRequestDto {
     private String address1;
     private String address2;
     private LocalDate birthdate;
-    private String gender;
     private String grade;
 }

@@ -120,8 +120,7 @@ public class UserController {
                 savedUser.getEmail(),
                 savedUser.getGrade().name(),
                 savedUser.getProfileImage(),
-                savedUser.getBirthdate(),
-                savedUser.getGender().name()
+                savedUser.getBirthdate()
         );
 
         return ResponseEntity.ok(response);

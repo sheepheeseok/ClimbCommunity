@@ -6,13 +6,13 @@ export interface SignUpForm {
     userId: string;
     username: string;
     password: string;
+    passwordConfirm?: string;
     emailLocal: string;
-    emailDomain: string;
+    emailDomain: string; // 일반 모드에서는 select 값, custom 모드에서는 전체 이메일
     phone?: string;
     address?: string;
     addressDetail?: string;
     birthdate?: string;
-    gender?: string;
 }
 
 export function SignupHook() {
@@ -22,13 +22,13 @@ export function SignupHook() {
         userId: "",
         username: "",
         password: "",
+        passwordConfirm: "",
         emailLocal: "",
-        emailDomain: "",
+        emailDomain: "gmail.com",
         phone: "",
         address: "",
         addressDetail: "",
         birthdate: "",
-        gender: "",
     });
 
     const [isCustomEmail, setIsCustomEmail] = useState(false);
@@ -41,24 +41,30 @@ export function SignupHook() {
         username: "",
     });
 
+    // 정규식
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const userIdRegex = /^[a-z][a-z0-9]{5,19}$/;
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,20}$/;
+    const passwordRegex =
+        /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,20}$/;
+    const emailLocalRegex = /^[a-zA-Z0-9._-]+$/;
+    const customEmailRegex =
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     const validateEmail = (email: string) => emailRegex.test(email);
     const validateUserId = (id: string) => userIdRegex.test(id);
     const validatePassword = (pw: string) => passwordRegex.test(pw);
 
+    // 아이디/닉네임 중복체크
     const checkDuplicate = async (type: "userId" | "username", value: string) => {
         try {
-            const res = await api.get("http://localhost:8080/api/auth/check-duplicate", {
-                params: { [type]: value }
+            const res = await api.get("/api/auth/check-duplicate", {
+                params: { [type]: value },
             });
 
             if (res.data[type]) {
                 setErrors((prev) => ({
                     ...prev,
-                    [type]: `이미 사용 중인 ${type === "userId" ? "아이디" : "닉네임"}입니다.`
+                    [type]: `이미 사용 중인 ${type === "userId" ? "아이디" : "닉네임"}입니다.`,
                 }));
             } else {
                 setErrors((prev) => ({ ...prev, [type]: "" }));
@@ -68,23 +74,12 @@ export function SignupHook() {
         }
     };
 
+    // 입력값 변경 핸들러
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
 
-        // 유효성 검사
-        if (name === "userId") {
-            if (validateUserId(value)) {
-                checkDuplicate("userId", value);
-            }
-        }
-
-        if (name === "username") {
-            if (value.trim().length >= 2) {
-                checkDuplicate("username", value);
-            }
-        }
-
+        // 비밀번호 유효성
         if (name === "password") {
             setErrors((prev) => ({
                 ...prev,
@@ -94,11 +89,45 @@ export function SignupHook() {
             }));
         }
 
+        // emailLocal → 일반 모드일 때만 검사
+        if (name === "emailLocal" && !isCustomEmail) {
+            if (!emailLocalRegex.test(value)) {
+                setErrors((prev) => ({
+                    ...prev,
+                    email: "아이디 부분에는 영문, 숫자, '.', '-', '_'만 사용할 수 있습니다.",
+                }));
+                return;
+            } else {
+                setErrors((prev) => ({ ...prev, email: "" }));
+            }
+        }
+
+        // emailDomain → custom 모드일 때 전체 이메일 검사
+        if (name === "emailDomain" && isCustomEmail) {
+            if (!customEmailRegex.test(value)) {
+                setErrors((prev) => ({
+                    ...prev,
+                    email: "올바른 전체 이메일 주소를 입력하세요.",
+                }));
+                return;
+            } else {
+                setErrors((prev) => ({ ...prev, email: "" }));
+            }
+        }
+
+        // 최종 이메일 유효성 검사
         if (name === "emailLocal" || name === "emailDomain") {
-            const fullEmail =
-                name === "emailLocal"
-                    ? `${value}@${form.emailDomain}`
-                    : `${form.emailLocal}@${value}`;
+            let fullEmail = "";
+
+            if (isCustomEmail) {
+                fullEmail = value; // 사용자가 입력한 그대로 (select=custom일 때는 input 박스로 직접 받음)
+            } else {
+                fullEmail =
+                    name === "emailLocal"
+                        ? `${value}@${form.emailDomain}`
+                        : `${form.emailLocal}@${value}`;
+            }
+
             setErrors((prev) => ({
                 ...prev,
                 email: validateEmail(fullEmail) ? "" : "올바른 이메일 주소를 입력하세요.",
@@ -106,33 +135,12 @@ export function SignupHook() {
         }
     };
 
+    // 제출 핸들러
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // 필수 입력값 검증
-        const requiredFields = [
-            "userId",
-            "username",
-            "password",
-            "emailLocal",
-            ...(isCustomEmail ? [] : ["emailDomain"]),
-            "phone",
-            "address",
-            "addressDetail",
-            "birthdate",
-            "gender",
-        ] as const;
-
-        for (const field of requiredFields) {
-            const key = field as keyof SignUpForm;
-            if (!form[key] || form[key]?.trim?.() === "") {
-                alert("모든 항목을 빠짐없이 입력해주세요.");
-                return;
-            }
-        }
-
         const fullEmail = isCustomEmail
-            ? form.emailLocal
+            ? form.emailDomain
             : `${form.emailLocal}@${form.emailDomain}`;
 
         if (!validateEmail(fullEmail)) {
@@ -149,11 +157,10 @@ export function SignupHook() {
             address1: form.address,
             address2: form.addressDetail,
             birthdate: form.birthdate,
-            gender: form.gender,
         };
 
         try {
-            const res = await api.post("http://localhost:8080/api/users/register", payload);
+            const res = await api.post("/api/users/register", payload);
             alert("회원가입 완료!");
             navigate("/login");
             console.log("✅ 회원가입 결과:", res.data);
@@ -171,5 +178,6 @@ export function SignupHook() {
         setIsCustomEmail,
         handleChange,
         handleSubmit,
+        checkDuplicate,
     };
 }

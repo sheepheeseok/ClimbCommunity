@@ -15,5 +15,4 @@ public class UserRegisterResponseDto {
     private String grade;
     private String profileImage;
     private LocalDate birthdate;
-    private String gender;
 }

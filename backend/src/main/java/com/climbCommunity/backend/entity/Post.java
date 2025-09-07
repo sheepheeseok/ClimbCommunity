@@ -58,17 +58,13 @@ public class Post {
 
     @Builder.Default
     @ElementCollection
-    @CollectionTable(name = "post_tried_problems", joinColumns = @JoinColumn(name = "post_id"))
-    @MapKeyColumn(name = "color")
-    @Column(name = "count")
-    private Map<String, Integer> triedProblems = new HashMap<>();
-
-    @Builder.Default
-    @ElementCollection
     @CollectionTable(name = "post_completed_problems", joinColumns = @JoinColumn(name = "post_id"))
     @MapKeyColumn(name = "color")
     @Column(name = "count")
     private Map<String, Integer> completedProblems = new HashMap<>();
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
 
     @PrePersist
     protected void onCreate() {

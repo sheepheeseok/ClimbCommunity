@@ -1,0 +1,79 @@
+<svg width="180" height="64" viewBox="0 0 180 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- "D" -->
+  <text x="8" y="42"
+        font-family="Inter, sans-serif"
+        font-weight="800"
+        font-size="36"
+        fill="#3F6ED9"
+        letter-spacing="-1px">D</text>
+  
+  <!-- "a" -->
+  <text x="32" y="42"
+        font-family="Inter, sans-serif"
+        font-weight="800"
+        font-size="36"
+        fill="#3F6ED9"
+        letter-spacing="-1px">a</text>
+  
+  <!-- "b" - tilted with slipping effect -->
+  <g transform="translate(56, 0) rotate(3, 12, 32)">
+    <text x="0" y="42"
+          font-family="Inter, sans-serif"
+          font-weight="800"
+          font-size="36"
+          fill="#3F6ED9"
+          letter-spacing="-1px">b</text>
+    
+    <!-- Small slipping foot mark -->
+    <g transform="translate(8, 20)" opacity="0.6">
+      <ellipse cx="3" cy="2" rx="4" ry="2" fill="#94A3B8" transform="rotate(-15)"/>
+      <path d="M6 3 L8 4 M7 1 L9 2"
+            stroke="#94A3B8"
+            stroke-width="0.8"
+            stroke-linecap="round"
+            opacity="0.7"/>
+    </g>
+  </g>
+  
+  <!-- "E" -->
+  <text x="80" y="42"
+        font-family="Inter, sans-serif"
+        font-weight="800"
+        font-size="36"
+        fill="#3F6ED9"
+        letter-spacing="-1px">E</text>
+  
+  <!-- "y" -->
+  <text x="104" y="42"
+        font-family="Inter, sans-serif"
+        font-weight="800"
+        font-size="36"
+        fill="#3F6ED9"
+        letter-spacing="-1px">y</text>
+  
+  <!-- "o" with subtle grip texture -->
+  <g>
+    <text x="128" y="42"
+          font-family="Inter, sans-serif"
+          font-weight="800"
+          font-size="36"
+          fill="#3F6ED9"
+          letter-spacing="-1px">o</text>
+    
+    <!-- Subtle grip texture dots inside "o" -->
+    <g opacity="0.4">
+      <circle cx="140" cy="30" r="0.8" fill="#94A3B8"/>
+      <circle cx="143" cy="33" r="0.6" fill="#94A3B8"/>
+      <circle cx="137" cy="35" r="0.7" fill="#94A3B8"/>
+      <circle cx="141" cy="37" r="0.5" fill="#94A3B8"/>
+    </g>
+    
+    <!-- Small slip mark on the "o" -->
+    <g transform="translate(145, 28)" opacity="0.5">
+      <path d="M0 2 L2 4 M1 0 L3 2"
+            stroke="#94A3B8"
+            stroke-width="0.8"
+            stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
