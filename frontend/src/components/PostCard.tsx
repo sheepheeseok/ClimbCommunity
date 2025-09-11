@@ -6,19 +6,31 @@ import { LikeIcon, LikeIconFilled } from "@/components/icons/LikeIcon";
 import { CommentIcon } from "@/components/icons/CommentIcon";
 import { ShareIcon } from "@/components/icons/ShareIcon";
 import { SaveIcon, SaveIconFilled } from "@/components/icons/SaveIcon";
-import {CompletedProblemsCount} from "@/components/CompletedProblemsCount";
-import CommentList from "@/components/comments/CommentList";
+import { CompletedProblemsCount } from "@/components/CompletedProblemsCount";
+
+type Media = {
+    type: "image" | "video";
+    url: string;
+    orderIndex: number;
+};
 
 type PostCardProps = {
-    post: any;
+    post: {
+        id: number;
+        content: string;
+        userId: string;
+        username: string;
+        createdAt: string;
+        location?: string;
+        commentCount: number;
+        completedProblems?: Record<string, number>;
+        mediaList: Media[]; // ✅ 이제 mediaList만 사용
+    };
     onCommentClick?: (post: any) => void;
 };
 
 export default function PostCard({ post, onCommentClick }: PostCardProps) {
-    const mediaList = [
-        ...(post.imageUrls?.map((url: string) => ({ type: "image", url })) || []),
-        ...(post.videoUrls?.map((url: string) => ({ type: "video", url })) || []),
-    ];
+    const mediaList: Media[] = post.mediaList || [];
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expanded, setExpanded] = useState(false);
@@ -26,10 +38,9 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const [likeActive, setLikeActive] = useState(false);
     const [saveActive, setSaveActive] = useState(false);
 
-
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-    // ✅ currentIndex 변경될 때 현재 영상만 play, 나머지는 pause
+    // ✅ 현재 인덱스 영상만 play
     useEffect(() => {
         videoRefs.current.forEach((video, i) => {
             if (video) {
@@ -60,13 +71,11 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const hasMore = secondLine.length > 3 || lines.length > 2;
 
     return (
-        <div
-            className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+        <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             {/* Header */}
             <div className="flex items-center justify-between p-4">
                 <div className="flex items-center space-x-3">
-                    <div
-                        className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-yellow-500 flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-yellow-500 flex items-center justify-center text-white font-semibold text-sm">
                         {post.userId[0].toUpperCase()}
                     </div>
                     <div>
@@ -77,9 +86,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                 {post.createdAt ? timeAgo(post.createdAt) : ""}
               </span>
                         </div>
-                        {post.location && (
-                            <p className="text-sm text-black">{post.location}</p>
-                        )}
+                        {post.location && <p className="text-sm text-black">{post.location}</p>}
                     </div>
                 </div>
                 <button className="text-gray-400 hover:text-gray-600">⋯</button>
@@ -89,8 +96,8 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             <div className="relative aspect-[4/5] bg-black overflow-hidden">
                 <motion.div
                     className="flex w-full h-full"
-                    animate={{x: `-${currentIndex * 100}%`}}
-                    transition={{duration: 0.4, ease: "easeInOut"}}
+                    animate={{ x: `-${currentIndex * 100}%` }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
                 >
                     {mediaList.map((media, i) => (
                         <div key={i} className="w-full h-full flex-shrink-0 relative">
@@ -123,7 +130,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                                 onClick={handlePrev}
                                 className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white w-8 h-8 rounded-full flex items-center justify-center shadow"
                             >
-                                <ChevronLeft className="w-5 h-5 text-gray-800"/>
+                                <ChevronLeft className="w-5 h-5 text-gray-800" />
                             </button>
                         )}
                         {currentIndex < mediaList.length - 1 && (
@@ -131,7 +138,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                                 onClick={handleNext}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white w-8 h-8 rounded-full flex items-center justify-center shadow"
                             >
-                                <ChevronRight className="w-5 h-5 text-gray-800"/>
+                                <ChevronRight className="w-5 h-5 text-gray-800" />
                             </button>
                         )}
                     </>
@@ -157,7 +164,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                         onClick={() => setIsMuted(!isMuted)}
                         className="absolute bottom-3 right-3 bg-black/60 text-white p-2 rounded-full"
                     >
-                        {isMuted ? <VolumeX size={20}/> : <Volume2 size={20}/>}
+                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                     </button>
                 )}
             </div>
@@ -168,29 +175,40 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     <button
                         onClick={() => setLikeActive(!likeActive)}
                         className="cursor-pointer"
-                    ><span className="flex items-center text-gray-700 hover:text-gray-500">
-                            {likeActive ? <LikeIconFilled className="w-6 h-6 animate-pop"/> :
-                                <LikeIcon className="w-6 h-6 animate-pop"/>}
-                    </span>
+                    >
+            <span className="flex items-center text-gray-700 hover:text-gray-500">
+              {likeActive ? (
+                  <LikeIconFilled className="w-6 h-6 animate-pop" />
+              ) : (
+                  <LikeIcon className="w-6 h-6 animate-pop" />
+              )}
+            </span>
                     </button>
-                    <button onClick={() => onCommentClick && onCommentClick(post)}
-                            className="flex items-center text-gray-700 hover:text-gray-500">
-                        <CommentIcon className="w-6 h-6"/>
+                    <button
+                        onClick={() => onCommentClick && onCommentClick(post)}
+                        className="flex items-center text-gray-700 hover:text-gray-500"
+                    >
+                        <CommentIcon className="w-6 h-6" />
                     </button>
                     <button className="flex items-center text-gray-700 hover:text-gray-500">
-                        <ShareIcon className="w-6 h-6"/>
+                        <ShareIcon className="w-6 h-6" />
                     </button>
                 </div>
-                <button onClick={() => setSaveActive(!saveActive)}
-                        className="flex items-center text-gray-700 hover:text-gray-500">
-                    {saveActive ? <SaveIconFilled className="w-6 h-6 animate-pop"/> :
-                        <SaveIcon className="w-6 h-6 animate-pop"/>}
+                <button
+                    onClick={() => setSaveActive(!saveActive)}
+                    className="flex items-center text-gray-700 hover:text-gray-500"
+                >
+                    {saveActive ? (
+                        <SaveIconFilled className="w-6 h-6 animate-pop" />
+                    ) : (
+                        <SaveIcon className="w-6 h-6 animate-pop" />
+                    )}
                 </button>
             </div>
 
             {post.completedProblems && (
                 <div className="px-4 pb-2">
-                    <CompletedProblemsCount problems={post.completedProblems}/>
+                    <CompletedProblemsCount problems={post.completedProblems} />
                 </div>
             )}
 
@@ -217,6 +235,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
           </span>
                 )}
             </div>
+
             {post.commentCount > 0 && (
                 <div className="px-4 pb-2">
                     <button
@@ -228,7 +247,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                 </div>
             )}
 
-            {/* ✅ 댓글 입력창 (구분선 추가) */}
+            {/* 댓글 입력창 */}
             <div className="px-4 py-2 border-t border-gray-200 mt-1">
                 <input
                     type="text"

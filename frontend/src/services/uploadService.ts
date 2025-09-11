@@ -1,52 +1,61 @@
-// services/uploadService.ts
 import api from "@/lib/axios";
+import { PostThumbnail } from "@/hooks/ProfileHook";
 
-type UploadPostParams = {
-    formData: {
-        category: string;
-        content: string;
-        location?: string;
-        date?: string;
-        completedProblems: Record<string, number>;
-        thumbnailIndex: number;   // ✅ 추가
-    };
+interface UploadPostParams {
+    formData: any;
     files: File[];
-    setProgress?: (progress: number) => void;
-};
+    thumbnails?: File[];
+    setProgress: (progress: number) => void;
+}
 
-export async function uploadPost({ formData, files, setProgress }: UploadPostParams) {
-    const request = new FormData();
+export async function uploadPost({
+                                     formData,
+                                     files,
+                                     thumbnails = [],
+                                     setProgress,
+                                 }: UploadPostParams) {
+    const data = new FormData();
 
-    const postPayload = {
-        category: formData.category,
-        content: formData.content,
-        location: formData.location ?? "", // 값 없으면 빈 문자열
-        date: formData.date ?? null,
-        completedProblems: formData.completedProblems ?? {},
-        thumbnailIndex: formData.thumbnailIndex ?? 0,
-    };
+    // JSON DTO (post)
+    const postBlob = new Blob([JSON.stringify(formData)], { type: "application/json" });
+    data.append("post", postBlob);
 
-    // ✅ post JSON에 thumbnailIndex 포함
-    request.append(
-        "post",
-        new Blob([JSON.stringify(formData)], { type: "application/json" })
-    );
+    console.log("🚀 업로드 시작: formData =", formData);
 
-    files.forEach((file) => {
-        if (file.type.startsWith("video")) {
-            request.append("videos", file);
-        } else {
-            request.append("images", file);
-        }
+    // 원본 파일 업로드
+    files.forEach((file, index) => {
+        data.append("files", file);
+        data.append("fileOrder", String(index)); // ✅ orderIndex 같이 보냄
     });
 
-    return api.post("/api/posts", request, {
-        timeout: 60_000,
-        onUploadProgress: (e) => {
-            if (setProgress && e.total) {
-                const percent = Math.round((e.loaded * 100) / e.total);
+    // 썸네일 업로드
+    thumbnails.forEach((thumb, idx) => {
+        console.log(
+            `🖼 FormData thumbnails 추가 [${idx}]:`,
+            thumb.name,
+            thumb.type,
+            thumb.size
+        );
+        data.append("thumbnails", thumb);
+    });
+
+    // 최종 FormData 확인
+    console.log("📌 최종 FormData files:", data.getAll("files"));
+    console.log("📌 최종 FormData thumbnails:", data.getAll("thumbnails"));
+
+    const res = await api.post<PostThumbnail>("/api/posts", data, {
+        withCredentials: true,
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+                const percent = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                );
+                console.log("⏳ 업로드 진행률:", percent, "%");
                 setProgress(percent);
             }
         },
     });
+
+    return res.data; // ✅ 반드시 반환
 }

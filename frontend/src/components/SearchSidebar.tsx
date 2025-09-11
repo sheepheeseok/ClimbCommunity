@@ -76,7 +76,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose })
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">검색</h2>
-                    <button onClick={onClose}>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <CloseIcon className="text-gray-500 hover:text-gray-700" />
                     </button>
                 </div>

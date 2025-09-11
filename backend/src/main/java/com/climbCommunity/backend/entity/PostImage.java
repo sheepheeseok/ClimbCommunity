@@ -27,6 +27,8 @@ public class PostImage {
 
     private LocalDateTime createdAt;
 
+    private int orderIndex;
+
     @PrePersist
     private void onCreate() {
         this.createdAt = LocalDateTime.now();

@@ -43,6 +43,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Grade grade;
 
+    @Column(length = 255)
+    private String bio;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Status status;

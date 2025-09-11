@@ -9,7 +9,7 @@ export const setAccessToken = (token: string) => {
 };
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://13.208.181.227:8080",
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://13.208.249.125:8080",
     withCredentials: true, // 쿠키 방식도 병행 (배포 환경 대비)
 });
 

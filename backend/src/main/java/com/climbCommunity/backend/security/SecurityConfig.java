@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/users/register", "/api/auth/logout", "/api/auth/check-duplicate", "/api/auth/findUserId",
                                 "/api/auth/findPassword" ).permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/posts/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )

@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { IMessage } from "@stomp/stompjs";
+
+export interface PostThumbnail {
+    id: number;
+    thumbnailUrl: string;
+}
 
 export interface UserLite {
     userId: string;
@@ -18,44 +25,29 @@ export interface Profile {
         followers: number;
         following: number;
     };
-    posts: string[];
-    savedPosts: string[];
-    taggedPosts: string[];
-}
+    posts: PostThumbnail[];
 
-interface UseProfileResult {
-    profile: Profile | null;
+    savedPosts?: any[];
+    taggedPosts?: any[];
+
     followers: UserLite[];
     following: UserLite[];
-    loading: boolean;
-    error: string | null;
 }
 
-export function ProfileHook(userId: string): UseProfileResult {
+// ✅ 공통 훅
+function useProfileFetcher(endpoint: string, userId?: string) {
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [followers, setFollowers] = useState<UserLite[]>([]);
-    const [following, setFollowing] = useState<UserLite[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!userId) return;
+        if (!endpoint) return;
 
         const fetchData = async () => {
             setLoading(true);
             try {
-                // 프로필 정보
-                const profileRes = await api.get<Profile>(`api/users/${userId}`);
-                setProfile(profileRes.data);
-
-                // 팔로워
-                const followersRes = await api.get<UserLite[]>(`api/users/${userId}/followers`);
-                setFollowers(followersRes.data);
-
-                // 팔로잉
-                const followingRes = await api.get<UserLite[]>(`api/users/${userId}/following`);
-                setFollowing(followingRes.data);
-
+                const res = await api.get<Profile>(endpoint);
+                setProfile(res.data);
                 setError(null);
             } catch (err: any) {
                 console.error(err);
@@ -66,7 +58,47 @@ export function ProfileHook(userId: string): UseProfileResult {
         };
 
         fetchData();
-    }, [userId]);
+    }, [endpoint]);
 
-    return { profile, followers, following, loading, error };
+
+    useWebSocket(
+        userId
+            ? [
+                {
+                    destination: `/topic/profile/${userId}`,
+                    handler: (msg: IMessage) => {
+                        try {
+                            const newPost = JSON.parse(msg.body);
+                            setProfile((prev) =>
+                                prev
+                                    ? {
+                                        ...prev,
+                                        posts: [newPost, ...prev.posts],
+                                        stats: {
+                                            ...prev.stats,
+                                            posts: prev.stats.posts + 1, // ✅ 게시글 수 증가
+                                        },
+                                    }
+                                    : prev
+                            );
+                        } catch (e) {
+                            console.error("❌ WebSocket 메시지 파싱 실패:", e);
+                        }
+                    },
+                },
+            ]
+            : []
+    );
+
+    return { profile, loading, error, setProfile };
+}
+
+// ✅ 내 프로필 조회
+export function useMyProfile() {
+    return useProfileFetcher("/api/users/me/profile");
+}
+
+// ✅ 특정 유저 프로필 조회
+export function useUserProfile(userId: string) {
+    return useProfileFetcher(userId ? `/api/users/${userId}/profile` : "", userId);
 }

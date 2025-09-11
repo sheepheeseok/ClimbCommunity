@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.climbCommunity.backend.dto.post.MediaDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
@@ -28,8 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -43,6 +46,7 @@ public class PostService {
     private final PostImageRepository postImageRepository;
     private final PostVideoRepository postVideoRepository;
     private final CommentRepository commentRepository;
+    private final PostEventPublisher postEventPublisher;
 
     public Post savePost(Post post) {
         return postRepository.save(post);
@@ -72,12 +76,16 @@ public class PostService {
                 .status(post.getStatus().name())
                 .createdAt(post.getCreatedAt().toString())
                 .updatedAt(post.getUpdatedAt() != null ? post.getUpdatedAt().toString() : null)
-                .imageUrls(post.getImages().stream()
-                        .map(img -> s3Service.getFileUrl(img.getImageUrl())) // ✅ 풀 URL 변환
-                        .toList())
-                .videoUrls(post.getVideos().stream()
-                        .map(video -> s3Service.getFileUrl(video.getVideoUrl())) // ✅ 풀 URL 변환
-                        .toList())
+                .mediaList(
+                        Stream.concat(
+                                        post.getImages().stream()
+                                                .map(img -> new MediaDto("image", s3Service.getFileUrl(img.getImageUrl()), img.getOrderIndex())),
+                                        post.getVideos().stream()
+                                                .map(video -> new MediaDto("video", s3Service.getFileUrl(video.getVideoUrl()), video.getOrderIndex()))
+                                )
+                                .sorted(Comparator.comparingInt(MediaDto::getOrderIndex)) // ✅ orderIndex 순 정렬
+                                .toList()
+                )
                 .thumbnailUrl(post.getThumbnailUrl())   // ✅ 썸네일
                 .location(post.getLocation())           // ✅ location 매핑
                 .completedProblems(post.getCompletedProblems()) // ✅ 완등 문제 매핑
@@ -159,58 +167,74 @@ public class PostService {
 
     @Transactional
     public Post savePostWithMedia(Post post,
-                                  List<MultipartFile> images,
-                                  List<MultipartFile> videos,
+                                  List<MultipartFile> files,
+                                  List<MultipartFile> thumbnails,
                                   Integer thumbnailIndex) {
+
         Post savedPost = postRepository.save(post);
         Long postId = savedPost.getId();
-        Long userId = savedPost.getUser().getId(); // 작성자 userId
+        Long userId = savedPost.getUser().getId();
 
-        // 업로드된 파일들의 key 리스트 (썸네일 선택용)
-        List<String> uploadedKeys = new ArrayList<>();
+        log.info("📌 [savePostWithMedia] postId={}, userId={}, thumbnailIndex={}", postId, userId, thumbnailIndex);
 
-        // === 이미지 업로드 ===
-        if (images != null && !images.isEmpty()) {
-            String imageDir = "posts/" + postId + "/images";
-            for (MultipartFile file : images) {
-                String key = s3Service.uploadFile(file, userId, imageDir);
-                uploadedKeys.add(key);
+        // === 이미지/영상 업로드 ===
+        if (files != null && !files.isEmpty()) {
+            String mediaDir = "posts/" + postId + "/media";
+            int order = 0;
+            for (MultipartFile file : files) {
+                String key = s3Service.uploadFile(file, userId, mediaDir);
 
-                PostImage postImage = PostImage.builder()
-                        .post(savedPost)
-                        .imageUrl(key) // DB에는 key 저장 (URL 대신)
-                        .build();
-                postImageService.save(postImage);
+                if (file.getContentType() != null && file.getContentType().startsWith("video")) {
+                    PostVideo postVideo = PostVideo.builder()
+                            .post(savedPost)
+                            .videoUrl(key)
+                            .orderIndex(order)
+                            .build();
+                    postVideoService.save(postVideo);
+                    log.info("🎥 비디오 업로드 완료: {} (orderIndex={})", key, order);
+                } else {
+                    PostImage postImage = PostImage.builder()
+                            .post(savedPost)
+                            .imageUrl(key)
+                            .orderIndex(order)
+                            .build();
+                    postImageService.save(postImage);
+                    log.info("🖼 이미지 업로드 완료: {} (orderIndex={})", key, order);
+                }
+                order++;
             }
         }
 
-        // === 비디오 업로드 ===
-        if (videos != null && !videos.isEmpty()) {
-            String videoDir = "posts/" + postId + "/videos";
-            for (MultipartFile file : videos) {
-                String key = s3Service.uploadFile(file, userId, videoDir);
-                uploadedKeys.add(key);
+        // === 썸네일 업로드 (프론트에서 캡처한 것만) ===
+        if (thumbnails != null && !thumbnails.isEmpty()) {
+            String thumbDir =  "posts/" + postId + "/thumbnails";
+            for (int i = 0; i < thumbnails.size(); i++) {
+                MultipartFile thumb = thumbnails.get(i);
+                String key = s3Service.uploadFile(thumb, userId, thumbDir);
+                log.info("🖼 썸네일 업로드 완료: {} (index={})", key, i);
 
-                PostVideo postVideo = PostVideo.builder()
-                        .post(savedPost)
-                        .videoUrl(key) // DB에는 key 저장
-                        .build();
-                postVideoService.save(postVideo);
+                if (thumbnailIndex != null && i == thumbnailIndex) {
+                    savedPost.setThumbnailUrl(key); // ✅ 대표 썸네일 지정
+                    log.info("⭐ 대표 썸네일 지정: {}", key);
+                }
             }
         }
 
-        // === 대표 썸네일 지정 ===
-        if (thumbnailIndex != null &&
-                thumbnailIndex >= 0 &&
-                thumbnailIndex < uploadedKeys.size()) {
-            savedPost.setThumbnailUrl(uploadedKeys.get(thumbnailIndex));
-        } else if (!uploadedKeys.isEmpty()) {
-            // fallback: 첫 번째 업로드 파일
-            savedPost.setThumbnailUrl(uploadedKeys.get(0));
+        // === fallback: 썸네일이 null일 때 ===
+        if (savedPost.getThumbnailUrl() == null) {
+            if (!savedPost.getImages().isEmpty()) {
+                savedPost.setThumbnailUrl(savedPost.getImages().get(0).getImageUrl());
+            } else if (!savedPost.getVideos().isEmpty()) {
+                savedPost.setThumbnailUrl(savedPost.getVideos().get(0).getVideoUrl());
+            }
         }
 
-        return postRepository.save(savedPost);
+        Post finalPost = postRepository.save(savedPost);
+
+        // ✅ 이벤트 발행 (피드 + 프로필 갱신)
+        postEventPublisher.publishPostCreated(finalPost);
+
+        return finalPost;
     }
-
 
 }

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
-import { ProfileHook } from "@/hooks/ProfileHook";
+import { useMyProfile } from "@/hooks/ProfileHook";
+import { PostDetailModal } from "@/modals/PostDetailModal";
+import api from "@/lib/axios";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -10,31 +12,42 @@ interface Tab {
 
 export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
     const [activeTab, setActiveTab] = useState<Tab["id"]>("posts");
-    const { profile, followers, following, loading, error } = ProfileHook(userId);
-    const [posts, setPosts] = useState<string[]>([]);
-    const [savedPosts, setSavedPosts] = useState<string[]>([]);
-    const [taggedPosts, setTaggedPosts] = useState<string[]>([]);
+    const { profile, loading, error } = useMyProfile();
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
     const tabs: Tab[] = [
-        { id: "posts", label: "Posts", icon: Grid3x3},
-        { id: "saved", label: "Saved", icon: Bookmark},
-        { id: "tagged", label: "Tagged", icon: UserCheck},
+        { id: "posts", label: "Posts", icon: Grid3x3 },
+        { id: "saved", label: "Saved", icon: Bookmark },
+        { id: "tagged", label: "Tagged", icon: UserCheck },
     ];
-
-    const getCurrentPosts = (): string[] => {
-        switch (activeTab) {
-            case "saved":
-                return savedPosts;
-            case "tagged":
-                return taggedPosts;
-            default:
-                return posts;
-        }
-    };
 
     if (loading) return <p>Loading...</p>;
     if (error) return <p>{error}</p>;
     if (!profile) return null;
+
+    const getCurrentPosts = () => {
+        switch (activeTab) {
+            case "saved":
+                // 아직 API 없음 → 빈 배열 반환
+                return profile.savedPosts?.length ? profile.savedPosts : [];
+            case "tagged":
+                return profile.taggedPosts?.length ? profile.taggedPosts : [];
+            default:
+                return profile.posts?.length ? profile.posts : [];
+        }
+    };
+
+    const handleClickPost = async (postId: number) => {
+        try {
+            const res = await api.get(`/api/posts/${postId}`);
+            setSelectedPost(res.data); // ✅ 상세 데이터 세팅
+            setIsModalOpen(true);
+        } catch (err) {
+            console.error("게시물 상세 조회 실패:", err);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -86,7 +99,7 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                                 </div>
                                 <div className="text-center">
                                     <div className="text-xl font-bold text-gray-900">
-                                        {profile.stats.followers.toLocaleString()}
+                                        {profile.stats.followers}
                                     </div>
                                     <div className="text-sm text-gray-500">팔로워</div>
                                 </div>
@@ -135,14 +148,15 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     {getCurrentPosts().length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {getCurrentPosts().map((post, index) => (
+                            {getCurrentPosts().map((post: any) => (
                                 <div
-                                    key={index}
+                                    key={post.id}
                                     className="aspect-square bg-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                                    onClick={() => handleClickPost(post.id)}
                                 >
                                     <img
-                                        src={post}
-                                        alt={`Post ${index + 1}`}
+                                        src={post.thumbnailUrl}
+                                        alt={`Post ${post.id}`}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
                                 </div>
@@ -151,24 +165,28 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                     ) : (
                         <div className="text-center py-16">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                {activeTab === "posts" && <Grid3x3 className="w-8 h-8 text-gray-400" />}
-                                {activeTab === "saved" && <Bookmark className="w-8 h-8 text-gray-400" />}
-                                {activeTab === "tagged" && <UserCheck className="w-8 h-8 text-gray-400" />}
+                                {activeTab === "posts" && (
+                                    <Grid3x3 className="w-8 h-8 text-gray-400" />
+                                )}
+                                {activeTab === "saved" && (
+                                    <Bookmark className="w-8 h-8 text-gray-400" />
+                                )}
+                                {activeTab === "tagged" && (
+                                    <UserCheck className="w-8 h-8 text-gray-400" />
+                                )}
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {activeTab === "posts" && ""}
-                                {activeTab === "saved" && ""}
-                                {activeTab === "tagged" && ""}
+                                게시물이 없습니다.
                             </h3>
-                            <p className="text-gray-500">
-                                {activeTab === "posts" && ""}
-                                {activeTab === "saved" && ""}
-                                {activeTab === "tagged" && ""}
-                            </p>
                         </div>
                     )}
                 </div>
             </div>
+            <PostDetailModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                post={selectedPost}
+            />
         </div>
     );
 };

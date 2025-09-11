@@ -19,14 +19,19 @@ import CommentList from "@/components/comments/CommentList";
 import type { Comment } from "@/components/comments/types";
 import api from "@/lib/axios";
 
+interface Media {
+    url: string;
+    type: "image" | "video";
+    orderIndex: number;
+}
+
 interface Post {
     id: number;
     content: string;
     username: string;
     userId: string;
     location: string;
-    imageUrls: string[];
-    videoUrls: string[];
+    mediaList: Media[];
     thumbnailUrl: string;
     createdAt: string;
 }
@@ -117,10 +122,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         inputRef.current?.focus();
     };
 
-    const mediaList = [
-        ...post.imageUrls.map((url) => ({ type: "image", url })),
-        ...post.videoUrls.map((url) => ({ type: "video", url })),
-    ];
+    const mediaList = post.mediaList || [];
 
     const overlay = (
         <AnimatePresence>
@@ -182,8 +184,9 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                                 src={media.url}
                                                 loop
                                                 muted={isMuted}
+                                                autoPlay={i === currentIndex}
                                                 playsInline
-                                                className="max-w-full max-h-full object-contain"
+                                                className="w-full h-full object-cover"
                                             />
                                             {i === currentIndex && (
                                                 <button

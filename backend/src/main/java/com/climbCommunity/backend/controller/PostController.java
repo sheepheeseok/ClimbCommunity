@@ -36,14 +36,14 @@ public class PostController {
     private final PostService postService;
     private final UserService userService;
 
-    // 게시글 등록
+    // ✅ 게시글 등록
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponseDto> createPost(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestPart("post") @Valid PostRequestDto dto,
-            @RequestPart(value = "images", required = false) List<MultipartFile> imageFiles,
-            @RequestPart(value = "videos", required = false) List<MultipartFile> videoFiles) {
-
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @RequestPart(value = "thumbnails", required = false) List<MultipartFile> thumbnails
+    ) {
         User user = userService.findByUserId(userPrincipal.getUserId())
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
@@ -52,15 +52,20 @@ public class PostController {
                 .content(dto.getContent())
                 .category(dto.getCategory())
                 .location(dto.getLocation())
-                .date(dto.getDate()) // 문자열이면 파싱 필요
+                .date(dto.getDate())
                 .completedProblems(dto.getCompletedProblems())
                 .build();
 
-        Integer thumbnailIndex = dto.getThumbnailIndex();
+        Post savedPost = postService.savePostWithMedia(
+                post,
+                files,
+                thumbnails,
+                dto.getThumbnailIndex()
+        );
 
-        Post savedPost = postService.savePostWithMedia(post, imageFiles, videoFiles, thumbnailIndex);
-        return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost));
+        return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost, 0L));
     }
+
 
 
     // 게시글 목록 조회 ( 카테고리별 조회 )

@@ -7,6 +7,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -21,36 +23,56 @@ public class PostResponseDto {
     private String status;
     private String createdAt;
     private String updatedAt;
-    private List<String> imageUrls;
-    private List<String> videoUrls;
-    private String thumbnailUrl;
+    private List<MediaDto> mediaList;
+    private String thumbnailUrl;  // ✅ 대표 썸네일만 유지
     private String location;
     private Map<String, Integer> completedProblems;
     private long commentCount;
 
     public static PostResponseDto fromEntity(Post post) {
-        return fromEntity(post, 0L); // 기본 commentCount = 0
+        return fromEntity(post, 0L);
     }
 
     public static PostResponseDto fromEntity(Post post, long commentCount) {
+        List<MediaDto> mediaList = new ArrayList<>();
+
+        // 이미지 매핑
+        mediaList.addAll(
+                post.getImages().stream()
+                        .map(img -> MediaDto.builder()
+                                .url(img.getImageUrl())
+                                .type("image")
+                                .orderIndex(img.getOrderIndex())
+                                .build()
+                        ).toList()
+        );
+
+        // 비디오 매핑
+        mediaList.addAll(
+                post.getVideos().stream()
+                        .map(video -> MediaDto.builder()
+                                .url(video.getVideoUrl())
+                                .type("video")
+                                .orderIndex(video.getOrderIndex())
+                                .build()
+                        ).toList()
+        );
+
+        mediaList.sort(Comparator.comparingInt(MediaDto::getOrderIndex));
+
         return PostResponseDto.builder()
                 .id(post.getId())
                 .content(post.getContent())
                 .category(post.getCategory())
                 .username(post.getUser().getUsername())
-                .status(post.getStatus().name())
                 .userId(post.getUser().getUserId())
+                .status(post.getStatus().name())
                 .createdAt(format(post.getCreatedAt()))
                 .updatedAt(post.getUpdatedAt() != null ? format(post.getUpdatedAt()) : null)
-                .imageUrls(post.getImages().stream()
-                        .map(img -> img.getImageUrl())
-                        .toList())
-                .videoUrls(post.getVideos().stream()
-                        .map(video -> video.getVideoUrl())
-                        .toList())
-                .thumbnailUrl(post.getThumbnailUrl())       // ✅ 썸네일 반영
-                .location(post.getLocation())               // ✅ 위치 반영
-                .completedProblems(post.getCompletedProblems()) // ✅ 완등 문제 수 반영
+                .mediaList(mediaList)  // ✅ 통합된 mediaList
+                .thumbnailUrl(post.getThumbnailUrl())
+                .location(post.getLocation())
+                .completedProblems(post.getCompletedProblems())
                 .commentCount(commentCount)
                 .build();
     }

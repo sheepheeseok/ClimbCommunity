@@ -1,6 +1,8 @@
 package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.location.Coordinate;
+import com.climbCommunity.backend.dto.user.ProfileResponseDto;
+import com.climbCommunity.backend.dto.user.UserLiteDto;
 import com.climbCommunity.backend.dto.user.UserRegisterRequestDto;
 import com.climbCommunity.backend.dto.user.UserUpdateRequestDto;
 import com.climbCommunity.backend.entity.User;
@@ -8,10 +10,12 @@ import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Grade;
 import com.climbCommunity.backend.entity.enums.Role;
 import com.climbCommunity.backend.entity.enums.Status;
+import com.climbCommunity.backend.repository.FollowRepository;
+import com.climbCommunity.backend.repository.PostRepository;
 import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +32,8 @@ public class UserService {
     private final NaverMapService naverMapService;
     private final NaverReverseGeocodingService naverReverseGeocodingService;
     private final UserAddressRepository userAddressRepository;
+    private final PostRepository postRepository;
+    private final FollowRepository followRepository;
 
     public User saveUser(User user) {
         return userRepository.save(user);

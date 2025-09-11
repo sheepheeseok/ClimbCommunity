@@ -5,11 +5,14 @@ import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
+import com.climbCommunity.backend.security.UserPrincipal;
+import com.climbCommunity.backend.service.ProfileService;
 import com.climbCommunity.backend.service.UserService;
 import com.climbCommunity.backend.util.AddressUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,7 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
+    private final ProfileService profileService;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
@@ -73,6 +77,17 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    // 본인 프로필 불러오기
+    @GetMapping("/me/profile")
+    public ProfileResponseDto getMyProfile(@AuthenticationPrincipal UserPrincipal principal) {
+        return profileService.getProfile(principal.getUserId());
+    }
+
+    // 유저 프로필 불러오기
+    @GetMapping("/{userId}/profile")
+    public ProfileResponseDto getUserProfile(@PathVariable String userId) {
+        return profileService.getProfile(userId);
+    }
 
     @PatchMapping("/updateProfile")
     public ResponseEntity<UserResponseDto> updateProfile(@RequestBody UserUpdateRequestDto dto) {

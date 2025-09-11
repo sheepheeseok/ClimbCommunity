@@ -1,6 +1,8 @@
-// src/hooks/UploadModalHook.ts
 import { useState, useRef } from "react";
 import { uploadPost } from "@/services/uploadService";
+import { useMyProfile } from "@/hooks/ProfileHook";
+import { getThumbnails } from "video-metadata-thumbnails";
+import { PostThumbnail } from "@/hooks/ProfileHook"; // ✅ 타입 import
 
 interface FormData {
     category: string;
@@ -11,6 +13,27 @@ interface FormData {
     brownCount: string;
     blackCount: string;
     whiteCount: string;
+}
+
+// 썸네일 매핑 구조
+interface GeneratedThumbnail {
+    originalIndex: number; // ✅ selectedFiles 배열 기준 index
+    file: File;
+}
+
+// ✅ video-metadata-thumbnails 기반 wrapper
+async function getVideoThumbnail(file: File): Promise<File> {
+    const thumbs = await getThumbnails(file, {
+        quality: 0.8,
+        start: 0.1, // 0.1초 위치에서 캡처
+    });
+
+    const blob = thumbs[0]?.blob;
+    if (!blob) throw new Error("썸네일 blob 생성 실패");
+
+    return new File([blob], `${file.name}-thumbnail.jpg`, {
+        type: "image/jpeg",
+    });
 }
 
 export function UploadModalHook() {
@@ -34,14 +57,16 @@ export function UploadModalHook() {
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [filePreviews, setFilePreviews] = useState<string[]>([]);
+    const [generatedThumbnails, setGeneratedThumbnails] = useState<File[]>([]);
+
+    const { setProfile } = useMyProfile();
 
     /** 파일 선택 */
-    const handleFileSelection = (files: File[]) => {
+    const handleFileSelection = async (files: File[]) => {
         const validFiles = files.filter(
             (file) => file.type.startsWith("image/") || file.type.startsWith("video/")
         );
 
-        // ✅ 중복 제거 (file.name + file.size 기준)
         const uniqueFiles = validFiles.filter(
             (newFile) =>
                 !selectedFiles.some(
@@ -51,9 +76,36 @@ export function UploadModalHook() {
         );
 
         setSelectedFiles((prev) => [...prev, ...uniqueFiles]);
-        setFilePreviews((prev) => [...prev, ...uniqueFiles.map((file) => URL.createObjectURL(file))]);
-    };
 
+        const previews: string[] = [];
+        const thumbnails: File[] = [];
+
+        await Promise.all(
+            uniqueFiles.map(async (file) => {
+                if (file.type.startsWith("video/")) {
+                    try {
+                        const thumbFile = await getVideoThumbnail(file);
+                        console.log("🎯 비디오 → 썸네일 변환 성공:", thumbFile);
+
+                        thumbnails.push(thumbFile);
+                        previews.push(URL.createObjectURL(thumbFile));
+                    } catch (err) {
+                        console.error("비디오 썸네일 생성 실패:", err);
+                        previews.push(URL.createObjectURL(file)); // fallback
+                    }
+                } else {
+                    previews.push(URL.createObjectURL(file));
+                }
+            })
+        );
+
+        setFilePreviews((prev) => [...prev, ...previews]);
+        setGeneratedThumbnails((prev) => {
+            const updated = [...prev, ...thumbnails];
+            console.log("✅ 최종 generatedThumbnails 업데이트:", updated);
+            return updated;
+        });
+    };
 
     /** 입력값 검증 */
     const validateInputs = () => {
@@ -69,11 +121,9 @@ export function UploadModalHook() {
 
     /** Step별 입력 검증 */
     const validateStep = (step: number) => {
-        if (step === 1) {
-            if (selectedFiles.length === 0) {
-                alert("최소 1개의 이미지 또는 동영상을 선택하세요.");
-                return false;
-            }
+        if (step === 1 && selectedFiles.length === 0) {
+            alert("최소 1개의 이미지 또는 동영상을 선택하세요.");
+            return false;
         }
         if (step === 2) {
             if (!formData.location.trim()) {
@@ -85,26 +135,19 @@ export function UploadModalHook() {
                 return false;
             }
         }
-        if (step === 3) {
-            if (selectedThumbnail === null || selectedThumbnail < 0) {
-                alert("대표 썸네일을 선택하세요.");
-                return false;
-            }
+        if (step === 3 && (selectedThumbnail === null || selectedThumbnail < 0)) {
+            alert("대표 썸네일을 선택하세요.");
+            return false;
         }
         return true;
     };
 
     /** Step별 유효성 체크 (UI 반영용) */
     const isStepValid = (step: number) => {
-        if (step === 1) {
-            return selectedFiles.length > 0;
-        }
-        if (step === 2) {
+        if (step === 1) return selectedFiles.length > 0;
+        if (step === 2)
             return formData.location.trim() !== "" && formData.content.trim() !== "";
-        }
-        if (step === 3) {
-            return selectedThumbnail !== null && selectedThumbnail >= 0;
-        }
+        if (step === 3) return selectedThumbnail !== null && selectedThumbnail >= 0;
         return true;
     };
 
@@ -115,6 +158,7 @@ export function UploadModalHook() {
         try {
             setIsUploading(true);
             setUploadProgress(0);
+            setCurrentStep(4); // 업로드 진행 화면으로 이동
 
             const completedProblems = {
                 red: parseInt(formData.redCount || "0", 10),
@@ -124,20 +168,52 @@ export function UploadModalHook() {
                 white: parseInt(formData.whiteCount || "0", 10),
             };
 
-            await uploadPost({
+            // ✅ 대표 썸네일 후보
+            let finalThumbnail: File | null = null;
+            const selectedFile = selectedFiles[selectedThumbnail];
+            if (selectedFile) {
+                if (selectedFile.type.startsWith("video/")) {
+                    try {
+                        finalThumbnail = await getVideoThumbnail(selectedFile);
+                    } catch (e) {
+                        console.warn("⚠️ 비디오 썸네일 생성 실패:", e);
+                    }
+                } else if (selectedFile.type.startsWith("image/")) {
+                    finalThumbnail = selectedFile;
+                }
+            }
+
+            console.log("📌 최종 업로드 thumbnail:", finalThumbnail);
+
+            // ✅ 업로드 API 호출 → 새 게시물(PostThumbnail) 반환
+            const newPost: PostThumbnail = await uploadPost({
                 formData: {
                     category: "GENERAL",
                     content: formData.content,
                     location: formData.location,
-                    completedProblems,   // ✅ Map 구조로 변환해서 전달
-                    thumbnailIndex: selectedThumbnail,
+                    completedProblems,
+                    thumbnailIndex: 0,
                 },
                 files: selectedFiles,
+                thumbnails: finalThumbnail ? [finalThumbnail] : [],
                 setProgress: setUploadProgress,
             });
 
+            // ✅ 내 프로필 즉시 갱신
+            setProfile((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        posts: [newPost, ...prev.posts],
+                        stats: {
+                            ...prev.stats,
+                            posts: prev.stats.posts + 1,
+                        },
+                    }
+                    : prev
+            );
+
             setIsComplete(true);
-            setCurrentStep(4);
         } catch (error) {
             console.error("❌ 업로드 실패:", error);
             alert("게시물 업로드 중 오류가 발생했습니다.");
@@ -148,7 +224,7 @@ export function UploadModalHook() {
 
     /** Step 이동 */
     const nextStep = () => {
-        if (!validateStep(currentStep)) return; // ✅ 현재 단계 검증
+        if (!validateStep(currentStep)) return;
         setCurrentStep((prev) => Math.min(prev + 1, 4));
     };
     const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
@@ -171,6 +247,8 @@ export function UploadModalHook() {
         setUploadProgress(0);
         setIsUploading(false);
         setIsComplete(false);
+        setFilePreviews([]);
+        setGeneratedThumbnails([]);
     };
 
     return {
@@ -202,5 +280,4 @@ export function UploadModalHook() {
     };
 }
 
-// ✅ UploadModal 컴포넌트에서 props 타입으로 사용 가능
 export type UploadModalProps = ReturnType<typeof UploadModalHook>;
