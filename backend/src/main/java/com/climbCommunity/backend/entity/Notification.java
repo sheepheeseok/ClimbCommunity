@@ -29,13 +29,15 @@ public class Notification {
 
     private String message;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     @Enumerated(EnumType.STRING)
     private TargetType targetType;
 
     private Long targetId;
 
-    private Boolean isRead;
+    @Builder.Default
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
 
     private LocalDateTime createdAt;
 

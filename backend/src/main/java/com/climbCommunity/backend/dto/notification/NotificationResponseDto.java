@@ -23,9 +23,9 @@ public class NotificationResponseDto {
                 .id(notification.getId())
                 .type(notification.getType().name())
                 .message(notification.getMessage())
-                .targetType(notification.getTargetType().name())
+                .targetType(notification.getTargetType() != null ? notification.getTargetType().name() : null)
                 .targetId(notification.getTargetId())
-                .isRead(notification.getIsRead())
+                .isRead(notification.isRead())
                 .createdAt(notification.getCreatedAt())
                 .build();
     }

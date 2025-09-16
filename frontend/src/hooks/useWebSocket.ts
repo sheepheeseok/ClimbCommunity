@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
+import {WS_BROKER_URL} from "@/utils/config";
 
 type SubscriptionConfig = {
-    destination: string;              // 구독 경로
+    destination: string;              // 구독 경로 
     handler: (msg: IMessage) => void; // 메시지 처리 함수
 };
 
@@ -11,7 +12,7 @@ export function useWebSocket(subscriptions: SubscriptionConfig[]) {
 
     useEffect(() => {
         const client = new Client({
-            brokerURL: "ws://13.208.249.125:8080/ws", // ✅ EC2 퍼블릭 IP + 포트 + /ws
+            brokerURL: WS_BROKER_URL, // ✅ EC2 퍼블릭 IP + 포트 + /ws
             connectHeaders: {
                 Authorization: "Bearer " + localStorage.getItem("accessToken"), // ✅ 직접 토큰 넣기
             },

@@ -1,13 +1,9 @@
 package com.climbCommunity.backend.service;
-
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.DeleteObjectsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.climbCommunity.backend.dto.post.MediaDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
+import java.io.File;
 import com.climbCommunity.backend.entity.PostImage;
 import com.climbCommunity.backend.entity.PostVideo;
 import com.climbCommunity.backend.entity.enums.Category;
@@ -20,18 +16,14 @@ import com.climbCommunity.backend.repository.PostRepository;
 import com.climbCommunity.backend.repository.PostVideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -42,11 +34,11 @@ public class PostService {
     private final S3Service s3Service;
     private final PostImageService postImageService;
     private final PostVideoService postVideoService;
-    private final AmazonS3 amazonS3;
     private final PostImageRepository postImageRepository;
     private final PostVideoRepository postVideoRepository;
     private final CommentRepository commentRepository;
     private final PostEventPublisher postEventPublisher;
+    private final AsyncVideoService asyncVideoService;
 
     public Post savePost(Post post) {
         return postRepository.save(post);
@@ -177,50 +169,55 @@ public class PostService {
 
         log.info("📌 [savePostWithMedia] postId={}, userId={}, thumbnailIndex={}", postId, userId, thumbnailIndex);
 
-        // === 이미지/영상 업로드 ===
         if (files != null && !files.isEmpty()) {
             String mediaDir = "posts/" + postId + "/media";
             int order = 0;
-            for (MultipartFile file : files) {
-                String key = s3Service.uploadFile(file, userId, mediaDir);
 
-                if (file.getContentType() != null && file.getContentType().startsWith("video")) {
-                    PostVideo postVideo = PostVideo.builder()
-                            .post(savedPost)
-                            .videoUrl(key)
-                            .orderIndex(order)
-                            .build();
-                    postVideoService.save(postVideo);
-                    log.info("🎥 비디오 업로드 완료: {} (orderIndex={})", key, order);
-                } else {
-                    PostImage postImage = PostImage.builder()
-                            .post(savedPost)
-                            .imageUrl(key)
-                            .orderIndex(order)
-                            .build();
-                    postImageService.save(postImage);
-                    log.info("🖼 이미지 업로드 완료: {} (orderIndex={})", key, order);
+            for (MultipartFile file : files) {
+                try {
+                    String contentType = file.getContentType();
+                    String originalName = file.getOriginalFilename();
+
+                    boolean isVideo = (contentType != null && contentType.startsWith("video"))
+                            || (originalName != null && originalName.toLowerCase().matches(".*\\.(mp4|mov|mkv)$"));
+
+                    if (isVideo) {
+                        File tempFile = File.createTempFile("upload-", ".mp4");
+                        file.transferTo(tempFile);
+
+                        // ✅ 비동기 변환 시작
+                        asyncVideoService.processVideoAsync(postId, tempFile, userId, mediaDir, order, savedPost);
+
+                    } else {
+                        // ✅ 이미지 업로드
+                        String key = s3Service.uploadFile(file, userId, mediaDir);
+                        PostImage postImage = PostImage.builder()
+                                .post(savedPost)
+                                .imageUrl(key)
+                                .orderIndex(order)
+                                .build();
+                        postImageService.save(postImage);
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 파일 업로드 실패: {}", file.getOriginalFilename(), e);
                 }
                 order++;
             }
         }
 
-        // === 썸네일 업로드 (프론트에서 캡처한 것만) ===
+        // === 썸네일 업로드 ===
         if (thumbnails != null && !thumbnails.isEmpty()) {
-            String thumbDir =  "posts/" + postId + "/thumbnails";
+            String thumbDir = "posts/" + postId + "/thumbnails";
             for (int i = 0; i < thumbnails.size(); i++) {
                 MultipartFile thumb = thumbnails.get(i);
                 String key = s3Service.uploadFile(thumb, userId, thumbDir);
-                log.info("🖼 썸네일 업로드 완료: {} (index={})", key, i);
-
                 if (thumbnailIndex != null && i == thumbnailIndex) {
-                    savedPost.setThumbnailUrl(key); // ✅ 대표 썸네일 지정
-                    log.info("⭐ 대표 썸네일 지정: {}", key);
+                    savedPost.setThumbnailUrl(key);
                 }
             }
         }
 
-        // === fallback: 썸네일이 null일 때 ===
+        // fallback: 썸네일 지정
         if (savedPost.getThumbnailUrl() == null) {
             if (!savedPost.getImages().isEmpty()) {
                 savedPost.setThumbnailUrl(savedPost.getImages().get(0).getImageUrl());
@@ -231,10 +228,12 @@ public class PostService {
 
         Post finalPost = postRepository.save(savedPost);
 
-        // ✅ 이벤트 발행 (피드 + 프로필 갱신)
+        // 이벤트 발행
         postEventPublisher.publishPostCreated(finalPost);
 
         return finalPost;
     }
+
+
 
 }

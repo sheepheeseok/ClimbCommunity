@@ -112,7 +112,7 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                             </div>
 
                             {/* Bio */}
-                            <div className="text-gray-700 whitespace-pre-line leading-relaxed">
+                            <div className="text-gray-700 whitespace-pre-line text-sm leading-relaxed">
                                 {profile.bio}
                             </div>
                         </div>

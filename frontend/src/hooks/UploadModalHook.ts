@@ -1,8 +1,7 @@
 import { useState, useRef } from "react";
 import { uploadPost } from "@/services/uploadService";
-import { useMyProfile } from "@/hooks/ProfileHook";
+import { useMyProfile, PostThumbnail } from "@/hooks/ProfileHook";
 import { getThumbnails } from "video-metadata-thumbnails";
-import { PostThumbnail } from "@/hooks/ProfileHook"; // ✅ 타입 import
 
 interface FormData {
     category: string;
@@ -15,17 +14,11 @@ interface FormData {
     whiteCount: string;
 }
 
-// 썸네일 매핑 구조
-interface GeneratedThumbnail {
-    originalIndex: number; // ✅ selectedFiles 배열 기준 index
-    file: File;
-}
-
 // ✅ video-metadata-thumbnails 기반 wrapper
 async function getVideoThumbnail(file: File): Promise<File> {
     const thumbs = await getThumbnails(file, {
         quality: 0.8,
-        start: 0.1, // 0.1초 위치에서 캡처
+        start: 0.1,
     });
 
     const blob = thumbs[0]?.blob;
@@ -51,7 +44,12 @@ export function UploadModalHook() {
         blackCount: "",
         whiteCount: "",
     });
-    const [uploadProgress, setUploadProgress] = useState(0);
+
+    // ✅ 진행률 상태
+    const [uploadProgress, setUploadProgress] = useState(0);       // 네트워크 업로드 %
+    const [processingProgress, setProcessingProgress] = useState(0); // ffmpeg 변환 %
+    const [totalProgress, setTotalProgress] = useState(0);           // 합산 진행률 %
+
     const [isUploading, setIsUploading] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
 
@@ -60,6 +58,15 @@ export function UploadModalHook() {
     const [generatedThumbnails, setGeneratedThumbnails] = useState<File[]>([]);
 
     const { setProfile } = useMyProfile();
+
+    /** Step별 유효성 체크 */
+    const isStepValid = (step: number) => {
+        if (step === 1) return selectedFiles.length > 0;
+        if (step === 2)
+            return formData.location.trim() !== "" && formData.content.trim() !== "";
+        if (step === 3) return selectedThumbnail >= 0;
+        return true;
+    };
 
     /** 파일 선택 */
     const handleFileSelection = async (files: File[]) => {
@@ -85,13 +92,11 @@ export function UploadModalHook() {
                 if (file.type.startsWith("video/")) {
                     try {
                         const thumbFile = await getVideoThumbnail(file);
-                        console.log("🎯 비디오 → 썸네일 변환 성공:", thumbFile);
-
                         thumbnails.push(thumbFile);
                         previews.push(URL.createObjectURL(thumbFile));
                     } catch (err) {
                         console.error("비디오 썸네일 생성 실패:", err);
-                        previews.push(URL.createObjectURL(file)); // fallback
+                        previews.push(URL.createObjectURL(file));
                     }
                 } else {
                     previews.push(URL.createObjectURL(file));
@@ -100,11 +105,7 @@ export function UploadModalHook() {
         );
 
         setFilePreviews((prev) => [...prev, ...previews]);
-        setGeneratedThumbnails((prev) => {
-            const updated = [...prev, ...thumbnails];
-            console.log("✅ 최종 generatedThumbnails 업데이트:", updated);
-            return updated;
-        });
+        setGeneratedThumbnails((prev) => [...prev, ...thumbnails]);
     };
 
     /** 입력값 검증 */
@@ -119,38 +120,6 @@ export function UploadModalHook() {
         return true;
     };
 
-    /** Step별 입력 검증 */
-    const validateStep = (step: number) => {
-        if (step === 1 && selectedFiles.length === 0) {
-            alert("최소 1개의 이미지 또는 동영상을 선택하세요.");
-            return false;
-        }
-        if (step === 2) {
-            if (!formData.location.trim()) {
-                alert("장소를 입력하세요.");
-                return false;
-            }
-            if (!formData.content.trim()) {
-                alert("게시물 내용을 입력하세요.");
-                return false;
-            }
-        }
-        if (step === 3 && (selectedThumbnail === null || selectedThumbnail < 0)) {
-            alert("대표 썸네일을 선택하세요.");
-            return false;
-        }
-        return true;
-    };
-
-    /** Step별 유효성 체크 (UI 반영용) */
-    const isStepValid = (step: number) => {
-        if (step === 1) return selectedFiles.length > 0;
-        if (step === 2)
-            return formData.location.trim() !== "" && formData.content.trim() !== "";
-        if (step === 3) return selectedThumbnail !== null && selectedThumbnail >= 0;
-        return true;
-    };
-
     /** 업로드 실행 */
     const handleUpload = async () => {
         if (!validateInputs()) return;
@@ -158,7 +127,9 @@ export function UploadModalHook() {
         try {
             setIsUploading(true);
             setUploadProgress(0);
-            setCurrentStep(4); // 업로드 진행 화면으로 이동
+            setProcessingProgress(0);
+            setTotalProgress(0);
+            setCurrentStep(4);
 
             const completedProblems = {
                 red: parseInt(formData.redCount || "0", 10),
@@ -168,7 +139,6 @@ export function UploadModalHook() {
                 white: parseInt(formData.whiteCount || "0", 10),
             };
 
-            // ✅ 대표 썸네일 후보
             let finalThumbnail: File | null = null;
             const selectedFile = selectedFiles[selectedThumbnail];
             if (selectedFile) {
@@ -183,9 +153,7 @@ export function UploadModalHook() {
                 }
             }
 
-            console.log("📌 최종 업로드 thumbnail:", finalThumbnail);
-
-            // ✅ 업로드 API 호출 → 새 게시물(PostThumbnail) 반환
+            // ✅ 업로드 API 호출
             const newPost: PostThumbnail = await uploadPost({
                 formData: {
                     category: "GENERAL",
@@ -196,7 +164,9 @@ export function UploadModalHook() {
                 },
                 files: selectedFiles,
                 thumbnails: finalThumbnail ? [finalThumbnail] : [],
-                setProgress: setUploadProgress,
+                setUploadProgress,
+                setProcessingProgress,
+                setTotalProgress,
             });
 
             // ✅ 내 프로필 즉시 갱신
@@ -223,10 +193,7 @@ export function UploadModalHook() {
     };
 
     /** Step 이동 */
-    const nextStep = () => {
-        if (!validateStep(currentStep)) return;
-        setCurrentStep((prev) => Math.min(prev + 1, 4));
-    };
+    const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, 4));
     const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
     /** 모달 리셋 */
@@ -245,6 +212,8 @@ export function UploadModalHook() {
             whiteCount: "",
         });
         setUploadProgress(0);
+        setProcessingProgress(0);
+        setTotalProgress(0);
         setIsUploading(false);
         setIsComplete(false);
         setFilePreviews([]);
@@ -268,7 +237,12 @@ export function UploadModalHook() {
         setFormData,
         uploadProgress,
         setUploadProgress,
+        processingProgress,
+        setProcessingProgress,
+        totalProgress,
+        setTotalProgress,
         isUploading,
+        isStepValid,
         setIsUploading,
         isComplete,
         setIsComplete,
@@ -276,7 +250,6 @@ export function UploadModalHook() {
         handleFileSelection,
         handleUpload,
         resetModal,
-        isStepValid,
     };
 }
 

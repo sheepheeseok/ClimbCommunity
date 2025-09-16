@@ -7,6 +7,9 @@ import { CommentIcon } from "@/components/icons/CommentIcon";
 import { ShareIcon } from "@/components/icons/ShareIcon";
 import { SaveIcon, SaveIconFilled } from "@/components/icons/SaveIcon";
 import { CompletedProblemsCount } from "@/components/CompletedProblemsCount";
+import { followService } from "@/services/followService";
+import { useAuth } from "@/hooks/useAuth";
+import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
 
 type Media = {
     type: "image" | "video";
@@ -24,12 +27,13 @@ type PostCardProps = {
         location?: string;
         commentCount: number;
         completedProblems?: Record<string, number>;
-        mediaList: Media[]; // ✅ 이제 mediaList만 사용
+        mediaList: Media[];
     };
     onCommentClick?: (post: any) => void;
 };
 
 export default function PostCard({ post, onCommentClick }: PostCardProps) {
+    const { userId: currentUserId } = useAuth();
     const mediaList: Media[] = post.mediaList || [];
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,6 +41,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const [isMuted, setIsMuted] = useState(true);
     const [likeActive, setLikeActive] = useState(false);
     const [saveActive, setSaveActive] = useState(false);
+    const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
@@ -63,6 +68,47 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         if (currentIndex < mediaList.length - 1) setCurrentIndex((prev) => prev + 1);
     };
 
+    // ✅ 초기 상태 한 번만 조회
+    useEffect(() => {
+        if (post.userId !== currentUserId) {
+            followService
+                .isFollowing(post.userId)
+                .then((res) => setIsFollowing(res))
+                .catch(() => setIsFollowing(false));
+        }
+    }, [post.userId, currentUserId]);
+
+    // ✅ 버튼 클릭 → Optimistic Update
+    const handleFollow = async () => {
+        setIsFollowing(true);
+        try {
+            await followService.follow(post.userId);
+        } catch (e) {
+            console.error(e);
+            setIsFollowing(false); // 실패 시 롤백
+        }
+    };
+
+    const handleUnfollow = async () => {
+        setIsFollowing(false);
+        try {
+            await followService.unfollow(post.userId);
+        } catch (e) {
+            console.error(e);
+            setIsFollowing(true); // 실패 시 롤백
+        }
+    };
+
+    // ✅ WebSocket 이벤트로 동기화
+    useFollowEvents({
+        userId: post.userId,
+        onFollowEvent: (event: FollowEvent) => {
+            if (event.followerId === currentUserId) {
+                setIsFollowing(event.following);
+            }
+        },
+    });
+
     // ✅ 더보기 처리
     const lines = post.content.split("\n");
     const firstLine = lines[0] ?? "";
@@ -74,6 +120,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             {/* Header */}
             <div className="flex items-center justify-between p-4">
+                {/* 왼쪽: 아바타 + 유저 정보 */}
                 <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-yellow-500 flex items-center justify-center text-white font-semibold text-sm">
                         {post.userId[0].toUpperCase()}
@@ -89,7 +136,28 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                         {post.location && <p className="text-sm text-black">{post.location}</p>}
                     </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600">⋯</button>
+
+                {/* 오른쪽: 팔로우 버튼 + 더보기 */}
+                <div className="flex items-center space-x-4">
+                    {currentUserId && post.userId !== currentUserId && (
+                        isFollowing ? (
+                            <button
+                                onClick={handleUnfollow}
+                                className="px-3 py-1 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition"
+                            >
+                                팔로잉
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleFollow}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 transition"
+                            >
+                                팔로우
+                            </button>
+                        )
+                    )}
+                    <button className="text-gray-400 hover:text-gray-600">⋯</button>
+                </div>
             </div>
 
             {/* Media 슬라이더 */}

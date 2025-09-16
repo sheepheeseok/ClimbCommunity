@@ -5,10 +5,11 @@ import com.amazonaws.services.s3.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import java.io.File;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -105,5 +106,21 @@ public class S3Service {
     public String getFileUrl(String key) {
         return amazonS3.getUrl(bucket, key).toString();
     }
+
+    public String uploadProcessedFile(String filePath, Long userId, String dir) {
+        File file = new File(filePath);
+        String fileName = UUID.randomUUID() + "_" + file.getName();
+
+        // ✅ 항상 "users/{userId}/..." 구조로 맞추고, 중복 슬래시 제거
+        String key = String.format("users/%d/%s/%s", userId, dir, fileName)
+                .replaceAll("//+", "/");
+
+        PutObjectRequest request = new PutObjectRequest(bucket, key, file);
+
+        amazonS3.putObject(request);
+
+        return key;
+    }
+
 
 }

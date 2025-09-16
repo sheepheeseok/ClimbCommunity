@@ -1,4 +1,5 @@
 import axios from "axios";
+import {API_BASE_URL} from "@/utils/config";
 
 let accessToken: string | null = localStorage.getItem("accessToken"); // ✅ 새로고침 시 복원
 
@@ -9,7 +10,7 @@ export const setAccessToken = (token: string) => {
 };
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://13.208.249.125:8080",
+    baseURL: API_BASE_URL,
     withCredentials: true, // 쿠키 방식도 병행 (배포 환경 대비)
 });
 

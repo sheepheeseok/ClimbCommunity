@@ -62,4 +62,8 @@ public class FollowService {
                 .map(Follow::getFollowee)
                 .toList();
     }
+
+    public boolean isFollowing(String followerUserId, String followeeUserId) {
+        return followRepository.existsByFollower_UserIdAndFollowee_UserId(followerUserId, followeeUserId);
+    }
 }

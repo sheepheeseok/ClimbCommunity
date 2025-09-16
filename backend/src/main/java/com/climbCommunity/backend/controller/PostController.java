@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class PostController {
     private final PostService postService;
     private final UserService userService;
+    private final ProgressService progressService;
 
     // ✅ 게시글 등록
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -98,4 +100,16 @@ public class PostController {
         postService.deletePost(postId, userPrincipal.getId());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{postId}/progress")
+    public ResponseEntity<Map<String, Object>> getProgress(@PathVariable Long postId) {
+        int progress = progressService.getProgress(postId);
+        boolean complete = (progress >= 100);
+        Map<String, Object> body = Map.of(
+                "progress", progress,
+                "complete", complete
+        );
+        return ResponseEntity.ok(body);
+    }
+
 }

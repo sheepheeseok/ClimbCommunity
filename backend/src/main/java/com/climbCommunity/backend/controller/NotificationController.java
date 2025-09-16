@@ -8,6 +8,7 @@ import com.climbCommunity.backend.security.UserPrincipal;
 import com.climbCommunity.backend.service.NotificationService;
 import com.climbCommunity.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -24,9 +26,10 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<List<NotificationResponseDto>> getUnreadNotifications(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+    public ResponseEntity<List<NotificationResponseDto>> getAllNotifications(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         String userId = userPrincipal.getUserId();
-        List<NotificationResponseDto> notifications = notificationService.getUnreadNotifications(userId);
+        List<NotificationResponseDto> notifications = notificationService.getAllNotifications(userId);
         return ResponseEntity.ok(notifications);
     }
 

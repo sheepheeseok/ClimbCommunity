@@ -5,19 +5,25 @@ interface UploadPostParams {
     formData: any;
     files: File[];
     thumbnails?: File[];
-    setProgress: (progress: number) => void;
+    setUploadProgress: (progress: number) => void;     // 0~100
+    setProcessingProgress: (progress: number) => void; // 0~100
+    setTotalProgress: (progress: number) => void;      // 0~100
 }
 
 export async function uploadPost({
                                      formData,
                                      files,
                                      thumbnails = [],
-                                     setProgress,
+                                     setUploadProgress,
+                                     setProcessingProgress,
+                                     setTotalProgress,
                                  }: UploadPostParams) {
     const data = new FormData();
 
     // JSON DTO (post)
-    const postBlob = new Blob([JSON.stringify(formData)], { type: "application/json" });
+    const postBlob = new Blob([JSON.stringify(formData)], {
+        type: "application/json",
+    });
     data.append("post", postBlob);
 
     console.log("🚀 업로드 시작: formData =", formData);
@@ -25,24 +31,16 @@ export async function uploadPost({
     // 원본 파일 업로드
     files.forEach((file, index) => {
         data.append("files", file);
-        data.append("fileOrder", String(index)); // ✅ orderIndex 같이 보냄
+        data.append("fileOrder", String(index));
     });
 
     // 썸네일 업로드
     thumbnails.forEach((thumb, idx) => {
-        console.log(
-            `🖼 FormData thumbnails 추가 [${idx}]:`,
-            thumb.name,
-            thumb.type,
-            thumb.size
-        );
+        console.log(`🖼 FormData thumbnails 추가 [${idx}]:`, thumb.name);
         data.append("thumbnails", thumb);
     });
 
-    // 최종 FormData 확인
-    console.log("📌 최종 FormData files:", data.getAll("files"));
-    console.log("📌 최종 FormData thumbnails:", data.getAll("thumbnails"));
-
+    // === 1단계: 파일 업로드 (네트워크 전송 0~50%)
     const res = await api.post<PostThumbnail>("/api/posts", data, {
         withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
@@ -51,11 +49,48 @@ export async function uploadPost({
                 const percent = Math.round(
                     (progressEvent.loaded * 100) / progressEvent.total
                 );
-                console.log("⏳ 업로드 진행률:", percent, "%");
-                setProgress(percent);
+                const weighted = Math.min(50, Math.round((percent / 100) * 50));
+
+                console.log("⏳ 업로드 진행률:", percent, "% → 총:", weighted, "%");
+                setUploadProgress(percent);
+                setTotalProgress(weighted);
             }
         },
     });
 
-    return res.data; // ✅ 반드시 반환
+    // === 2단계: ffmpeg 변환 진행률 (백엔드 폴링 50~100%)
+    try {
+        const postId = res.data.id;
+        let done = false;
+
+        while (!done) {
+            const progressRes = await api.get<{ progress: number; complete: boolean }>(
+                `/api/posts/${postId}/progress`
+            );
+
+            const processingPercent = progressRes.data.progress; // 0~100
+            const weighted = 50 + Math.round((processingPercent / 100) * 50);
+
+            console.log(
+                "🎬 변환 진행률:",
+                processingPercent,
+                "% → 총:",
+                weighted,
+                "%"
+            );
+
+            setProcessingProgress(processingPercent);
+            setTotalProgress(weighted);
+
+            if (progressRes.data.complete) {
+                done = true;
+            } else {
+                await new Promise((r) => setTimeout(r, 1000));
+            }
+        }
+    } catch (err) {
+        console.warn("⚠️ 변환 진행률 조회 실패:", err);
+    }
+
+    return res.data;
 }

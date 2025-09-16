@@ -3,6 +3,7 @@ package com.climbCommunity.backend.controller;
 import com.climbCommunity.backend.dto.user.UserResponseDto;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.enums.NotificationType;
+import com.climbCommunity.backend.entity.enums.TargetType;
 import com.climbCommunity.backend.service.FollowService;
 import com.climbCommunity.backend.security.UserPrincipal;
 import com.climbCommunity.backend.service.NotificationService;
@@ -41,8 +42,8 @@ public class FollowController {
             notificationService.createNotification(
                     followee.getId(),                                    // 알림 받을 사용자 (팔로우 당한 사람)
                     NotificationType.FOLLOW,                             // 알림 타입
-                    null,                                                // 대상 타입 없음
-                    null,                                                // 대상 ID 없음
+                    TargetType.USER,                                                // 대상 타입 없음
+                    follower.getId(),                                                // 대상 ID 없음
                     follower.getUsername() + "님이 당신을 팔로우했습니다." // 메시지
             );
         }
@@ -50,9 +51,15 @@ public class FollowController {
     }
 
     @DeleteMapping("/{followeeId}/follow")
-    public ResponseEntity<Map<String, String>> unfollow(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                        @PathVariable String followeeId) {
+    public ResponseEntity<Map<String, String>> unfollow(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable String followeeId) {
+
         followService.unfollow(userPrincipal.getUserId(), followeeId);
+
+        // ✅ 팔로우 알림 삭제
+        notificationService.deleteFollowNotification(userPrincipal.getUserId(), followeeId);
+
         return ResponseEntity.ok(Map.of("message", "언팔로우 성공"));
     }
 
@@ -72,5 +79,14 @@ public class FollowController {
                 .map(UserResponseDto::fromEntity)
                 .toList();
                 return ResponseEntity.ok(following);
+    }
+
+    @GetMapping("/{targetUserId}/is-following")
+    public ResponseEntity<Map<String, Boolean>> isFollowing(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable String targetUserId
+    ) {
+        boolean isFollowing = followService.isFollowing(userPrincipal.getUserId(), targetUserId);
+        return ResponseEntity.ok(Map.of("isFollowing", isFollowing));
     }
 }

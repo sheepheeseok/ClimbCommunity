@@ -13,8 +13,9 @@ import { UploadModalHook } from "@/hooks/UploadModalHook";
 import UploadModal from "@/modals/UploadModal";
 import { useState } from "react";
 import { SearchSidebar } from "@/components/SearchSidebar";
-import { NotificationSidebar } from "@/components/NotificationSidebar"; // ✅ 새로 추가
+import { NotificationSidebar } from "@/components/NotificationSidebar";
 import { motion } from "framer-motion";
+import api from "@/lib/axios";
 
 export default function Navbar() {
     const location = useLocation();
@@ -23,7 +24,35 @@ export default function Navbar() {
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-    const [hasUnread, setHasUnread] = useState(true);
+    const [hasUnread, setHasUnread] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    const handleNotificationClick = async () => {
+        const nextOpen = !isNotificationOpen;
+        setIsNotificationOpen(nextOpen);
+
+        if (nextOpen) {
+            try {
+                // 1. 알림 가져오기
+                const res = await api.get("/api/notifications");
+                console.log("📥 [Navbar] 알림 데이터:", res.data);
+                setNotifications(res.data);
+
+                // 2. 열자마자 전체 읽음 처리
+                await api.patch("/api/notifications/read-all");
+                setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+                // 3. 새 알림 배지 제거
+                const hasUnreadNoti = res.data.some((n: any) => !n.isRead);
+                setHasUnread(hasUnreadNoti);
+
+                // 검색 사이드바 닫기
+                if (isSearchOpen) setIsSearchOpen(false);
+            } catch (err) {
+                console.error("❌ 알림 열기/읽음 처리 실패", err);
+            }
+        }
+    };
 
     // ✅ 사이드바 열림 여부 → Navbar width 제어
     const isAnySidebarOpen = isSearchOpen || isNotificationOpen;
@@ -44,8 +73,8 @@ export default function Navbar() {
                 animate={{ width: isAnySidebarOpen ? 92 : 256 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="hidden lg:fixed lg:left-0 lg:top-16 lg:h-screen
-          lg:bg-white lg:border-r lg:border-gray-200 lg:p-4 lg:flex lg:flex-col
-          z-50"
+                    lg:bg-white lg:border-r lg:border-gray-200 lg:p-4 lg:flex lg:flex-col
+                    z-50"
             >
                 <div className="flex flex-col h-full space-y-2 flex-1">
                     {menuItems.map(({ to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification }) => {
@@ -58,12 +87,12 @@ export default function Navbar() {
                                     key={`desktop-${label}`}
                                     onClick={() => {
                                         setIsSearchOpen(!isSearchOpen);
-                                        if (isNotificationOpen) setIsNotificationOpen(false); // 🔒 동시에 열리지 않도록
+                                        if (isNotificationOpen) setIsNotificationOpen(false);
                                     }}
                                     className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black"
                                 >
                                     <Icon className="w-6 h-6 flex-shrink-0" />
-                                    {!isAnySidebarOpen && <span className="font-normal leading-none">{label}</span>}
+                                    {!isAnySidebarOpen && <span>{label}</span>}
                                 </button>
                             );
                         }
@@ -73,15 +102,11 @@ export default function Navbar() {
                             return (
                                 <button
                                     key={`desktop-${label}`}
-                                    onClick={() => {
-                                        setIsNotificationOpen(!isNotificationOpen);
-                                        if (isSearchOpen) setIsSearchOpen(false); // 🔒 동시에 열리지 않도록
-                                        if (!isNotificationOpen) setHasUnread(false);
-                                    }}
+                                    onClick={handleNotificationClick}
                                     className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
                                 >
                                     <Icon className="w-6 h-6 flex-shrink-0" />
-                                    {!isAnySidebarOpen && <span className="font-normal leading-none">{label}</span>}
+                                    {!isAnySidebarOpen && <span>{label}</span>}
                                     {hasUnread && (
                                         <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full" />
                                     )}
@@ -102,7 +127,7 @@ export default function Navbar() {
                                     }`}
                                 >
                                     <Icon className="w-6 h-6 flex-shrink-0" />
-                                    {!isAnySidebarOpen && <span className="font-normal leading-none">{label}</span>}
+                                    {!isAnySidebarOpen && <span>{label}</span>}
                                 </button>
                             );
                         }
@@ -119,7 +144,7 @@ export default function Navbar() {
                                 }`}
                             >
                                 <Icon className="w-6 h-6 flex-shrink-0" />
-                                {!isAnySidebarOpen && <span className="font-normal leading-none">{label}</span>}
+                                {!isAnySidebarOpen && <span>{label}</span>}
                             </Link>
                         );
                     })}
@@ -132,24 +157,29 @@ export default function Navbar() {
                 animate={isSearchOpen ? { x: 92, opacity: 1 } : { x: -320, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 30 }}
                 className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)]
-          w-80 bg-white border-r border-gray-200 shadow-md z-40"
+                    w-80 bg-white border-r border-gray-200 shadow-md z-40"
             >
                 <SearchSidebar isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
             </motion.div>
 
-            {/* ✅ 알림 사이드바 (검색과 동일하게 왼쪽에서 슬라이드) */}
+            {/* ✅ 알림 사이드바 */}
             <motion.div
                 initial={{ x: -320, opacity: 0 }}
                 animate={isNotificationOpen ? { x: 92, opacity: 1 } : { x: -320, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 30 }}
                 className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)]
-          w-80 bg-white border-r border-gray-200 shadow-md z-40"
+                    w-80 bg-white border-r border-gray-200 shadow-md z-40"
             >
-                <NotificationSidebar isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+                <NotificationSidebar
+                    isOpen={isNotificationOpen}
+                    onClose={() => setIsNotificationOpen(false)}
+                    notifications={notifications} // ✅ props로 전달
+                    setNotifications={setNotifications}
+                />
             </motion.div>
 
-            {/* ✅ 모바일 하단바 + UploadModal 그대로 */}
-            <UploadModal {...modal} />
+            {/* ✅ 모바일 하단바 + UploadModal */}
+            <UploadModal modal={modal} />
         </>
     );
 }

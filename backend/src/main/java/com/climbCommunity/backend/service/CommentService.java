@@ -7,9 +7,11 @@ import com.climbCommunity.backend.entity.*;
 import com.climbCommunity.backend.entity.enums.CommentStatus;
 import com.climbCommunity.backend.entity.enums.LikeType;
 import com.climbCommunity.backend.entity.enums.TargetType;
+import com.climbCommunity.backend.event.CommentCreatedEvent;
 import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.context.ApplicationEventPublisher;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final ReportRepository reportRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 댓글 생성
     public CommentResponseDto saveComment(Long postId, String userId, CommentRequestDto dto) {
@@ -51,7 +54,21 @@ public class CommentService {
                 .status(CommentStatus.ACTIVE)
                 .build();
 
-        return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository, userId);
+        Comment savedComment = commentRepository.save(comment);
+
+        // ✅ 댓글 생성 후 이벤트 발행
+        if (!post.getUser().getId().equals(user.getId())) { // 자기 글에 단 댓글은 알림 X
+            eventPublisher.publishEvent(
+                    new CommentCreatedEvent(
+                            this,
+                            post.getId(),
+                            user.getId(),        // 댓글 작성자
+                            post.getUser().getId() // 게시물 작성자
+                    )
+            );
+        }
+
+        return CommentResponseDto.from(savedComment, commentLikeRepository, userId);
     }
 
     // 댓글 수정
@@ -76,8 +93,7 @@ public class CommentService {
             throw new AccessDeniedException("본인만 댓글을 삭제할 수 있습니다.");
         }
 
-        comment.setStatus(CommentStatus.DELETED);
-        commentRepository.save(comment);
+        commentRepository.delete(comment);
     }
 
     // 댓글 트리 조회
