@@ -11,7 +11,7 @@ import { AddPostIconActive } from "@/components/icons/AddPostIconActive";
 
 import { UploadModalHook } from "@/hooks/UploadModalHook";
 import UploadModal from "@/modals/UploadModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SearchSidebar } from "@/components/SearchSidebar";
 import { NotificationSidebar } from "@/components/NotificationSidebar";
 import { motion } from "framer-motion";
@@ -26,6 +26,22 @@ export default function Navbar() {
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
+
+    useEffect(() => {
+        const checkUnread = async () => {
+            try {
+                const res = await api.get("/api/notifications");
+                setNotifications(res.data);
+
+                const hasUnreadNoti = res.data.some((n: any) => !n.isRead);
+                setHasUnread(hasUnreadNoti);
+            } catch (err) {
+                console.error("❌ 초기 알림 불러오기 실패", err);
+            }
+        };
+
+        checkUnread();
+    }, []);
 
     const handleNotificationClick = async () => {
         const nextOpen = !isNotificationOpen;
@@ -43,8 +59,7 @@ export default function Navbar() {
                 setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
 
                 // 3. 새 알림 배지 제거
-                const hasUnreadNoti = res.data.some((n: any) => !n.isRead);
-                setHasUnread(hasUnreadNoti);
+                setHasUnread(false);
 
                 // 검색 사이드바 닫기
                 if (isSearchOpen) setIsSearchOpen(false);

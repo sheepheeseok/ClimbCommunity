@@ -81,7 +81,7 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                                 </div>
                                 <div className="flex items-center justify-center md:justify-start gap-3">
                                     <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors">
-                                        Edit Profile
+                                        프로필 수정
                                     </button>
                                     <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                                         <Settings className="w-5 h-5 text-gray-600" />
