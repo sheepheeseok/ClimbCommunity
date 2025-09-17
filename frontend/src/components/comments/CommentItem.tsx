@@ -38,12 +38,9 @@ export default function CommentItem({ comment, onReply, postId, onDeleted }: Pro
         <div className="flex items-start space-x-3 group">
             {/* 프로필 */}
             <img
-                src={
-                    comment.profileImage ||
-                    "https://ui-avatars.com/api/?name=JD&background=6366f1&color=fff"
-                }
+                src={comment.profileImage || "/default-avatar.png"} // ✅ comment.profileImage 없으면 기본 아바타
                 alt={comment.userId}
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full object-cover border border-gray-200"
             />
 
             {/* 본문 */}

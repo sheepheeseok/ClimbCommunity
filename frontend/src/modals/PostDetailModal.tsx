@@ -30,6 +30,7 @@ interface Post {
     content: string;
     username: string;
     userId: string;
+    profileImage: string;
     location: string;
     mediaList: Media[];
     thumbnailUrl: string;
@@ -249,9 +250,9 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                         <div className="flex items-center justify-between p-4 border-b">
                             <div className="flex items-center space-x-2">
                                 <img
-                                    src="https://ui-avatars.com/api/?name=JD&background=6366f1&color=fff"
-                                    alt="profile"
-                                    className="w-8 h-8 rounded-full"
+                                    src={post.profileImage || "/default-avatar.png"} // ✅ 프로필 이미지 or 기본 아바타
+                                    alt={post.username}
+                                    className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                 />
                                 <div>
                                     <div className="flex items-center space-x-1">
@@ -260,8 +261,8 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                         </h3>
                                         <span className="text-xl font-bold text-gray-500">·</span>
                                         <span className="text-sm font-semibold text-blue-600">
-                      팔로우
-                    </span>
+          팔로우
+        </span>
                                     </div>
                                     {post.location && (
                                         <p className="text-sm text-black">{post.location}</p>
@@ -278,17 +279,17 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                             {/* 게시글 본문 */}
                             <div className="flex items-start space-x-2">
                                 <img
-                                    src="https://ui-avatars.com/api/?name=JD&background=6366f1&color=fff"
-                                    alt="profile"
-                                    className="w-8 h-8 rounded-full"
+                                    src={post.profileImage || "/default-avatar.png"} // ✅ 동일 처리
+                                    alt={post.username}
+                                    className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                 />
                                 <div>
-                  <span className="font-semibold text-sm text-black mr-1">
-                    {post.userId}
-                  </span>
+      <span className="font-semibold text-sm text-black mr-1">
+        {post.userId}
+      </span>
                                     <span className="text-gray-800 text-[15px] whitespace-pre-line">
-                    {post.content}
-                  </span>
+        {post.content}
+      </span>
                                     <p className="text-xs text-gray-500 mt-1">
                                         {post.createdAt ? timeAgo(post.createdAt) : ""}
                                     </p>

@@ -22,6 +22,7 @@ public class CommentResponseDto {
     private Long id;
     private String userId;
     private String username;
+    private String profileImage;
     private long likeCount;
     private long dislikeCount;
     private boolean likedByMe;
@@ -47,6 +48,7 @@ public class CommentResponseDto {
                 .id(comment.getId())
                 .userId(comment.getUser().getUserId())
                 .username(comment.getUser().getUsername())
+                .profileImage(comment.getUser().getProfileImage())
                 .likeCount(likeCount)
                 .dislikeCount(dislikeCount)
                 .likedByMe(likedByMe)

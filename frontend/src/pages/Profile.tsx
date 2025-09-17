@@ -74,7 +74,7 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                                 <div className="flex items-center justify-center md:justify-start gap-3">
                                     <h1 className="text-2xl font-bold text-gray-900">
-                                        {profile.userId}
+                                        {profile.username}
                                     </h1>
                                     <div className="flex items-center justify-center w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full">
                                         <Award className="w-4 h-4 text-white" />
