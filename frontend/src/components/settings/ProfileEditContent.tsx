@@ -2,6 +2,7 @@ import React, { useState, useEffect, ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { getMyInfo } from "@/services/userService";
 import api from "@/lib/axios";
+import { useNavigate } from "react-router-dom";
 
 interface ProfileData {
     username: string;
@@ -25,6 +26,7 @@ export const ProfileEditContent: React.FC = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     // ✅ 사용자 정보 불러오기
     useEffect(() => {
@@ -97,6 +99,7 @@ export const ProfileEditContent: React.FC = () => {
             }
 
             alert("프로필이 성공적으로 업데이트되었습니다!");
+            navigate("/profile");
         } catch (err) {
             console.error("업데이트 실패:", err);
             alert("업데이트 중 오류 발생");
