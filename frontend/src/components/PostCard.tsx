@@ -23,6 +23,7 @@ type PostCardProps = {
         content: string;
         userId: string;
         username: string;
+        profileImage?: string;
         createdAt: string;
         location?: string;
         commentCount: number;
@@ -122,16 +123,19 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             <div className="flex items-center justify-between p-4">
                 {/* 왼쪽: 아바타 + 유저 정보 */}
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-yellow-500 flex items-center justify-center text-white font-semibold text-sm">
-                        {post.userId[0].toUpperCase()}
-                    </div>
+                    <img
+                        src={post.profileImage || "/default-avatar.png"} // ✅ null이면 기본 아바타
+                        alt={post.username}
+                        className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                    />
+
                     <div>
                         <div className="flex items-center space-x-1">
-                            <h3 className="font-semibold text-sm text-black">{post.userId}</h3>
+                            <h3 className="font-semibold text-sm text-black">{post.username}</h3>
                             <span className="text-xl font-bold text-gray-500">·</span>
                             <span className="text-sm text-gray-500">
-                {post.createdAt ? timeAgo(post.createdAt) : ""}
-              </span>
+          {post.createdAt ? timeAgo(post.createdAt) : ""}
+        </span>
                         </div>
                         {post.location && <p className="text-sm text-black">{post.location}</p>}
                     </div>

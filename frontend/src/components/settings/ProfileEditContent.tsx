@@ -83,9 +83,18 @@ export const ProfileEditContent: React.FC = () => {
                 formData.append("profileImage", selectedFile);
             }
 
-            await api.patch("/api/users/updateProfile", formData, {
+            const res = await api.patch("/api/users/updateProfile", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
+
+            // ✅ localStorage의 user 갱신
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                parsedUser.profileImage = res.data.profileImage; // 새 이미지 URL 반영
+                localStorage.setItem("user", JSON.stringify(parsedUser));
+                window.dispatchEvent(new Event("storage")); // Header 컴포넌트 리렌더 트리거
+            }
 
             alert("프로필이 성공적으로 업데이트되었습니다!");
         } catch (err) {

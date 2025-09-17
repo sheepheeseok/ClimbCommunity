@@ -20,6 +20,7 @@ public class PostResponseDto {
     private Category category;
     private String username;
     private String userId;
+    private String profileImage;
     private String status;
     private String createdAt;
     private String updatedAt;
@@ -67,6 +68,7 @@ public class PostResponseDto {
                 .username(post.getUser().getUsername())
                 .userId(post.getUser().getUserId())
                 .status(post.getStatus().name())
+                .profileImage(post.getUser().getProfileImage())
                 .createdAt(format(post.getCreatedAt()))
                 .updatedAt(post.getUpdatedAt() != null ? format(post.getUpdatedAt()) : null)
                 .mediaList(mediaList)  // ✅ 통합된 mediaList

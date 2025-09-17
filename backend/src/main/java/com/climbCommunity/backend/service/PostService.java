@@ -65,6 +65,7 @@ public class PostService {
                 .category(post.getCategory())
                 .username(post.getUser().getUsername())
                 .userId(post.getUser().getUserId())
+                .profileImage(post.getUser().getProfileImage())
                 .status(post.getStatus().name())
                 .createdAt(post.getCreatedAt().toString())
                 .updatedAt(post.getUpdatedAt() != null ? post.getUpdatedAt().toString() : null)
