@@ -7,15 +7,18 @@ import com.climbCommunity.backend.repository.UserAddressRepository;
 import com.climbCommunity.backend.repository.UserRepository;
 import com.climbCommunity.backend.security.UserPrincipal;
 import com.climbCommunity.backend.service.ProfileService;
+import com.climbCommunity.backend.service.S3Service;
 import com.climbCommunity.backend.service.UserService;
 import com.climbCommunity.backend.util.AddressUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,6 +31,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
     private final ProfileService profileService;
+    private final S3Service s3Service;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
@@ -66,6 +70,7 @@ public class UserController {
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .email(user.getEmail())
+                .bio(user.getBio())
                 .tel(user.getTel())
                 .address1(address1)
                 .address2(address2)
@@ -89,12 +94,15 @@ public class UserController {
         return profileService.getProfile(userId);
     }
 
-    @PatchMapping("/updateProfile")
-    public ResponseEntity<UserResponseDto> updateProfile(@RequestBody UserUpdateRequestDto dto) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUserId = authentication.getName();
+    @PatchMapping(value = "/updateProfile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserResponseDto> updateProfile(
+            @RequestPart("dto") UserUpdateRequestDto dto,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        String currentUserId = principal.getUserId();
 
-        User updatedUser = userService.updateUserProfile(currentUserId, dto);
+        User updatedUser = userService.updateUserProfile(currentUserId, dto, profileImage);
 
         UserResponseDto response = UserResponseDto.builder()
                 .userId(updatedUser.getUserId())
@@ -106,6 +114,7 @@ public class UserController {
 
         return ResponseEntity.ok(response);
     }
+
 
 
     @PostMapping("/register")

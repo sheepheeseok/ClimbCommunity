@@ -10,7 +10,8 @@ interface LoginForm {
 interface LoginResponse {
     userId: string;
     username: string;
-    accessToken: string; // ✅ 백엔드에서 내려줄 토큰
+    accessToken: string;
+    profileImage: string;
 }
 
 export function LoginHook() {
@@ -46,6 +47,7 @@ export function LoginHook() {
             localStorage.setItem("user", JSON.stringify({
                 userId: res.data.userId,
                 username: res.data.username,
+                profileImage: res.data.profileImage,
             }));
 
             window.dispatchEvent(new Event("storage"));

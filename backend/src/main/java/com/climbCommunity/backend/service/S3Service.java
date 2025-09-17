@@ -122,5 +122,45 @@ public class S3Service {
         return key;
     }
 
+    public String uploadProfileImage(MultipartFile file, Long userId, String oldImageUrl) {
+        validateFile(file);
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = getExtension(originalFilename);
+        String uniqueFileName = UUID.randomUUID() + (extension != null && !extension.isBlank() ? "." + extension : "");
+
+        // ✅ 프로필 이미지는 항상 users/{userId}/profile/{uuid}.png
+        String key = String.format("users/%d/profile/%s", userId, uniqueFileName);
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(file.getContentType());
+        metadata.setContentLength(file.getSize());
+
+        try (InputStream inputStream = file.getInputStream()) {
+            PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
+
+            amazonS3.putObject(request);
+
+            log.info("✅ 프로필 이미지 업로드 성공: {}", key);
+
+            // ✅ 기존 이미지 삭제
+            if (oldImageUrl != null && !oldImageUrl.isBlank()) {
+                try {
+                    deleteFile(oldImageUrl);
+                    log.info("✅ 기존 프로필 이미지 삭제 완료: {}", oldImageUrl);
+                } catch (Exception e) {
+                    log.warn("⚠️ 기존 프로필 이미지 삭제 실패: {}", oldImageUrl, e);
+                }
+            }
+
+            // ✅ URL 반환
+            return getFileUrl(key);
+        } catch (IOException e) {
+            log.error("❌ 프로필 이미지 업로드 실패", e);
+            throw new RuntimeException("프로필 이미지 업로드 실패", e);
+        }
+    }
+
+
 
 }

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,8 +33,7 @@ public class UserService {
     private final NaverMapService naverMapService;
     private final NaverReverseGeocodingService naverReverseGeocodingService;
     private final UserAddressRepository userAddressRepository;
-    private final PostRepository postRepository;
-    private final FollowRepository followRepository;
+    private final S3Service s3Service;
 
     public User saveUser(User user) {
         return userRepository.save(user);
@@ -112,48 +112,23 @@ public class UserService {
     }
 
     @Transactional
-    public User updateUserProfile(String userId, UserUpdateRequestDto dto) {
+    public User updateUserProfile(String userId, UserUpdateRequestDto dto, MultipartFile profileImage) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
         if (dto.getUsername() != null) user.setUsername(dto.getUsername());
-        if (dto.getTel() != null) user.setTel(dto.getTel());
-        if (dto.getProfileImage() != null) user.setProfileImage(dto.getProfileImage());
+        if (dto.getBio() != null) user.setBio(dto.getBio());
+        if (dto.getWebsite() != null) user.setWebsite(dto.getWebsite());
 
-        // ✅ 주소가 전달된 경우 처리
-        if (dto.getAddress1() != null && dto.getAddress2() != null) {
-            String fullAddress = dto.getAddress1() + " " + dto.getAddress2();
-
-            // 1. 기존 대표 주소 → isPrimary = false 처리
-            userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
-                    .ifPresent(primary -> {
-                        primary.setPrimary(false);
-                        userAddressRepository.save(primary);
-                    });
-
-            // 2. 새 주소 → 좌표 및 동 추출
-            Coordinate coordinate = naverMapService.geocodeAddress(fullAddress)
-                    .orElseThrow(() -> new IllegalArgumentException("주소를 좌표로 변환할 수 없습니다."));
-
-            String dong = naverReverseGeocodingService.reverseGeocodeOnly(coordinate.getLatitude(), coordinate.getLongitude())
-                    .orElse("미확인");
-
-            // 3. 새로운 주소 추가
-            UserAddress newAddress = UserAddress.builder()
-                    .user(user)
-                    .address(fullAddress)
-                    .dong(dong)
-                    .latitude(coordinate.getLatitude())
-                    .longitude(coordinate.getLongitude())
-                    .isPrimary(true)      // 새 주소가 대표 주소가 됨
-                    .isVerified(false)    // 아직 인증된 주소는 아님
-                    .build();
-
-            userAddressRepository.save(newAddress);
+        // ✅ 프로필 이미지 업로드 처리
+        if (profileImage != null && !profileImage.isEmpty()) {
+            String newUrl = s3Service.uploadProfileImage(profileImage, user.getId(), user.getProfileImage());
+            user.setProfileImage(newUrl);
         }
 
         return userRepository.save(user);
     }
+
 
     @Transactional
     public void changePassword(String userId, String currentPassword, String newPassword) {

@@ -6,18 +6,23 @@ import api, { setAccessToken } from "@/lib/axios";
 export default function Header() {
     const [open, setOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [profileImage, setProfileImage] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
 
-    // 로그인 상태 확인
+    // 로그인 상태 확인 + 프로필 이미지 가져오기
     useEffect(() => {
-        const user = localStorage.getItem("user");
+        const userJson = localStorage.getItem("user");
+        const user = userJson ? JSON.parse(userJson) : null;
         setIsLoggedIn(!!user);
+        setProfileImage(user?.profileImage || null);
 
         // storage 이벤트로 다른 탭/컴포넌트에서 상태 변화 감지
         function handleStorageChange() {
-            const user = localStorage.getItem("user");
-            setIsLoggedIn(!!user);
+            const updatedUserJson = localStorage.getItem("user");
+            const updatedUser = updatedUserJson ? JSON.parse(updatedUserJson) : null;
+            setIsLoggedIn(!!updatedUser);
+            setProfileImage(updatedUser?.profileImage || null);
         }
         window.addEventListener("storage", handleStorageChange);
         return () => window.removeEventListener("storage", handleStorageChange);
@@ -41,10 +46,8 @@ export default function Header() {
     // 로그아웃 처리
     const handleLogout = async () => {
         try {
-            // ✅ 서버에 로그아웃 알림 (쿠키 기반일 때는 의미 있음)
             await api.post("api/auth/logout");
 
-            // ✅ 프론트 상태 정리 (Authorization 방식에서는 이게 핵심)
             setAccessToken(""); // axios 인터셉터 토큰 제거
             localStorage.removeItem("user");
             window.dispatchEvent(new Event("storage"));
@@ -72,9 +75,12 @@ export default function Header() {
                             className="flex items-center space-x-2 hover:bg-gray-50 rounded-full p-2 transition-colors"
                         >
                             <img
-                                src="https://ui-avatars.com/api/?name=JD&background=6366f1&color=fff"
+                                src={
+                                    profileImage ||
+                                    "/default-avatar.png" // ✅ public 폴더에 기본 아바타
+                                }
                                 alt="Profile"
-                                className="w-8 h-8 rounded-full"
+                                className="w-8 h-8 rounded-full object-cover border"
                             />
                         </button>
 

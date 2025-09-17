@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { getMyInfo, updateProfile } from "@/services/userService";
+import { getMyInfo } from "@/services/userService";
+import api from "@/lib/axios";
 
 interface ProfileData {
     username: string;
@@ -21,7 +22,7 @@ export const ProfileEditContent: React.FC = () => {
         profileImage: "",
     });
 
-    const [newImage, setNewImage] = useState<File | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -52,20 +53,40 @@ export const ProfileEditContent: React.FC = () => {
     const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setNewImage(file);
-            setPreviewImage(URL.createObjectURL(file)); // 미리보기 표시
+            setSelectedFile(file);
+            setPreviewImage(URL.createObjectURL(file)); // 미리보기 이미지
         }
     };
 
     // ✅ 저장 핸들러
     const handleSave = async () => {
         try {
-            await updateProfile({
-                username: profileData.username,
-                bio: profileData.bio,
-                website: profileData.website,
-                profileImage: newImage || null, // 새 이미지 파일
+            const formData = new FormData();
+
+            // dto를 JSON Blob으로 append
+            formData.append(
+                "dto",
+                new Blob(
+                    [
+                        JSON.stringify({
+                            username: profileData.username,
+                            bio: profileData.bio,
+                            website: profileData.website,
+                        }),
+                    ],
+                    { type: "application/json" }
+                )
+            );
+
+            // 선택된 이미지 추가
+            if (selectedFile) {
+                formData.append("profileImage", selectedFile);
+            }
+
+            await api.patch("/api/users/updateProfile", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
+
             alert("프로필이 성공적으로 업데이트되었습니다!");
         } catch (err) {
             console.error("업데이트 실패:", err);
@@ -95,7 +116,7 @@ export const ProfileEditContent: React.FC = () => {
                         src={
                             previewImage ||
                             profileData.profileImage ||
-                            "/default-avatar.png" // ✅ 기본 아바타 이미지 (public 폴더에 넣기)
+                            "/default-avatar.png" // ✅ public 폴더에 기본 아바타 넣기
                         }
                         alt="Profile"
                         className="w-20 h-20 rounded-full object-cover border border-gray-200 shadow-sm"
@@ -117,7 +138,6 @@ export const ProfileEditContent: React.FC = () => {
                     </p>
                 </div>
             </div>
-
 
             {/* 입력 필드 */}
             <div className="space-y-6">

@@ -14,6 +14,7 @@ public class UserResponseDto {
     private String username;
     private String email;
     private String tel;
+    private String bio;
     private String address1;
     private String address2;
     private String Grade;
@@ -27,6 +28,7 @@ public class UserResponseDto {
         return UserResponseDto.builder()
                 .userId(user.getUserId())
                 .username(user.getUsername())
+                .bio(user.getBio())
                 .profileImage(user.getProfileImage())
                 .website(user.getWebsite())
                 .build();
