@@ -59,37 +59,46 @@ export async function uploadPost({
     });
 
     // === 2단계: ffmpeg 변환 진행률 (백엔드 폴링 50~100%)
-    try {
-        const postId = res.data.id;
-        let done = false;
+    const hasVideo = files.some((file) => file.type.startsWith("video"));
 
-        while (!done) {
-            const progressRes = await api.get<{ progress: number; complete: boolean }>(
-                `/api/posts/${postId}/progress`
-            );
+    if (hasVideo) {
+        try {
+            const postId = res.data.id;
+            let done = false;
 
-            const processingPercent = progressRes.data.progress; // 0~100
-            const weighted = 50 + Math.round((processingPercent / 100) * 50);
+            while (!done) {
+                const progressRes = await api.get<{ progress: number; complete: boolean }>(
+                    `/api/posts/${postId}/progress`
+                );
 
-            console.log(
-                "🎬 변환 진행률:",
-                processingPercent,
-                "% → 총:",
-                weighted,
-                "%"
-            );
+                const processingPercent = progressRes.data.progress; // 0~100
+                const weighted = 50 + Math.round((processingPercent / 100) * 50);
 
-            setProcessingProgress(processingPercent);
-            setTotalProgress(weighted);
+                console.log(
+                    "🎬 변환 진행률:",
+                    processingPercent,
+                    "% → 총:",
+                    weighted,
+                    "%"
+                );
 
-            if (progressRes.data.complete) {
-                done = true;
-            } else {
-                await new Promise((r) => setTimeout(r, 1000));
+                setProcessingProgress(processingPercent);
+                setTotalProgress(weighted);
+
+                if (progressRes.data.complete) {
+                    done = true;
+                } else {
+                    await new Promise((r) => setTimeout(r, 1000));
+                }
             }
+        } catch (err) {
+            console.warn("⚠️ 변환 진행률 조회 실패:", err);
         }
-    } catch (err) {
-        console.warn("⚠️ 변환 진행률 조회 실패:", err);
+    } else {
+        // ✅ 이미지 전용 게시물 → 변환 과정 스킵 후 즉시 완료 처리
+        console.log("🖼 이미지 전용 업로드 → 변환 단계 건너뛰기");
+        setProcessingProgress(100);
+        setTotalProgress(100);
     }
 
     return res.data;

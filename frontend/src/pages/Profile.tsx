@@ -3,6 +3,7 @@ import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
 import { useMyProfile } from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
+import { Link } from "react-router-dom";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -80,9 +81,12 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-center md:justify-start gap-3">
-                                    <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors">
-                                        프로필 수정
-                                    </button>
+                                    <Link
+                                        to="/profile/settingPage"
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
+                                    >
+                                        프로필 편집
+                                    </Link>
                                     <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                                         <Settings className="w-5 h-5 text-gray-600" />
                                     </button>

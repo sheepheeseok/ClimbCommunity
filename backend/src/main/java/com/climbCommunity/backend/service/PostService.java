@@ -176,12 +176,21 @@ public class PostService {
             for (MultipartFile file : files) {
                 try {
                     String contentType = file.getContentType();
-                    String originalName = file.getOriginalFilename();
+                    String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
 
-                    boolean isVideo = (contentType != null && contentType.startsWith("video"))
-                            || (originalName != null && originalName.toLowerCase().matches(".*\\.(mp4|mov|mkv)$"));
+                    // ✅ 비디오 여부 판별 (contentType 우선, 확장자 보조)
+                    boolean isVideo = false;
+                    if (contentType != null) {
+                        isVideo = contentType.startsWith("video");
+                    }
+                    if (!isVideo && !originalName.isBlank()) {
+                        isVideo = originalName.endsWith(".mp4")
+                                || originalName.endsWith(".mov")
+                                || originalName.endsWith(".mkv");
+                    }
 
                     if (isVideo) {
+                        log.info("🎬 비디오 업로드 처리: {}", originalName);
                         File tempFile = File.createTempFile("upload-", ".mp4");
                         file.transferTo(tempFile);
 
@@ -189,7 +198,7 @@ public class PostService {
                         asyncVideoService.processVideoAsync(postId, tempFile, userId, mediaDir, order, savedPost);
 
                     } else {
-                        // ✅ 이미지 업로드
+                        log.info("🖼️ 이미지 업로드 처리: {}", originalName);
                         String key = s3Service.uploadFile(file, userId, mediaDir);
                         PostImage postImage = PostImage.builder()
                                 .post(savedPost)
@@ -210,14 +219,18 @@ public class PostService {
             String thumbDir = "posts/" + postId + "/thumbnails";
             for (int i = 0; i < thumbnails.size(); i++) {
                 MultipartFile thumb = thumbnails.get(i);
-                String key = s3Service.uploadFile(thumb, userId, thumbDir);
-                if (thumbnailIndex != null && i == thumbnailIndex) {
-                    savedPost.setThumbnailUrl(key);
+                try {
+                    String key = s3Service.uploadFile(thumb, userId, thumbDir);
+                    if (thumbnailIndex != null && i == thumbnailIndex) {
+                        savedPost.setThumbnailUrl(key);
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 썸네일 업로드 실패: {}", thumb.getOriginalFilename(), e);
                 }
             }
         }
 
-        // fallback: 썸네일 지정
+        // === fallback: 썸네일 지정 ===
         if (savedPost.getThumbnailUrl() == null) {
             if (!savedPost.getImages().isEmpty()) {
                 savedPost.setThumbnailUrl(savedPost.getImages().get(0).getImageUrl());

@@ -28,6 +28,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
+    private String website;
+
     @Column(nullable = false, unique = true)
     private String email;
 

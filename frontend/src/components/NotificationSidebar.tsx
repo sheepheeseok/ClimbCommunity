@@ -10,27 +10,12 @@ export const NotificationSidebar: React.FC<{
     setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
 }> = ({ isOpen, onClose, notifications, setNotifications }) => {
 
-    const handleMarkAllAsRead = async () => {
-        try {
-            await notificationService.markAllAsRead();
-            setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-        } catch (err) {
-            console.error("❌ 알림 전체 읽음 실패:", err);
-        }
-    };
-
     return (
         <div className="p-6 h-full flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">알림</h2>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleMarkAllAsRead}
-                        className="text-sm text-gray-500 hover:text-gray-700"
-                    >
-                        모두 읽음
-                    </button>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"

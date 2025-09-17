@@ -96,26 +96,10 @@ public class UserController {
 
         User updatedUser = userService.updateUserProfile(currentUserId, dto);
 
-        // ✅ 대표 주소 조회
-        UserAddress primaryAddress = userAddressRepository.findByUserIdAndIsPrimaryTrue(updatedUser.getId())
-                .orElse(null);
-
-        String address1 = primaryAddress != null
-                ? AddressUtil.extractRoadName(primaryAddress.getAddress())
-                : null;
-
-        String address2 = primaryAddress != null
-                ? AddressUtil.extractDetailAddress(primaryAddress.getAddress())
-                : null;
-
         UserResponseDto response = UserResponseDto.builder()
                 .userId(updatedUser.getUserId())
                 .username(updatedUser.getUsername())
-                .email(updatedUser.getEmail())
-                .tel(updatedUser.getTel())
-                .address1(address1)
-                .address2(address2)
-                .Grade(updatedUser.getGrade().name())
+                .website(updatedUser.getWebsite())
                 .profileImage(updatedUser.getProfileImage())
                 .createdAt(updatedUser.getCreatedAt())
                 .build();

@@ -18,6 +18,7 @@ public class UserResponseDto {
     private String address2;
     private String Grade;
     private String role;
+    private String website;
     private String status;
     private String profileImage;
     private LocalDateTime createdAt;
@@ -27,6 +28,7 @@ public class UserResponseDto {
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .profileImage(user.getProfileImage())
+                .website(user.getWebsite())
                 .build();
     }
 }
