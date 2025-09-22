@@ -28,25 +28,31 @@ public class PostLikeController {
     @PostMapping("/{postId}/like")
     public ResponseEntity<?> toggleLike(@PathVariable Long postId,
                                         @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        System.out.println("Authorities: " + userPrincipal.getAuthorities());
-
         String userId = userPrincipal.getUserId();
 
         boolean alreadyLiked = postLikeService.hasUserLiked(userId, postId);
+        Post post = postService.getPostById(postId);
+
         if (alreadyLiked) {
             postLikeService.unlikePost(userId, postId);
+
+            // ✅ 좋아요 취소 시 알림 삭제
+            if (!post.getUser().getUserId().equals(userPrincipal.getUserId())) {
+                notificationService.deleteLikeNotification(post.getUser().getId(), postId);
+            }
+
             return ResponseEntity.ok("좋아요 취소");
         } else {
             postLikeService.likePost(userId, postId);
 
-            Post post = postService.getPostById(postId);
-            if(!post.getUser().getUserId().equals(userPrincipal.getUserId())) {
+            if (!post.getUser().getUserId().equals(userPrincipal.getUserId())) {
                 notificationService.createNotification(
                         post.getUser().getId(),
+                        userPrincipal.getId(),
                         NotificationType.LIKE,
                         TargetType.POST,
                         postId,
-                        userPrincipal.getUsername() + "님이 게시글을 좋아했습니다."
+                      "님이 게시글을 좋아했습니다."
                 );
             }
             return ResponseEntity.ok("좋아요 추가");

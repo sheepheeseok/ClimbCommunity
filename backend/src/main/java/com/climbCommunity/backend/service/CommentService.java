@@ -6,6 +6,7 @@ import com.climbCommunity.backend.dto.useractivity.MyCommentDto;
 import com.climbCommunity.backend.entity.*;
 import com.climbCommunity.backend.entity.enums.CommentStatus;
 import com.climbCommunity.backend.entity.enums.LikeType;
+import com.climbCommunity.backend.entity.enums.NotificationType;
 import com.climbCommunity.backend.entity.enums.TargetType;
 import com.climbCommunity.backend.event.CommentCreatedEvent;
 import com.climbCommunity.backend.exception.AccessDeniedException;
@@ -31,14 +32,16 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     // 댓글 생성
-    public CommentResponseDto saveComment(Long postId, String userId, CommentRequestDto dto) {
+    public CommentResponseDto saveComment(Long postId, Long userId, CommentRequestDto dto) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new EntityNotFoundException("게시글이 존재 하지 않습니다."));
+                .orElseThrow(() -> new EntityNotFoundException("게시글이 존재하지 않습니다."));
 
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new EntityNotFoundException("사용자가 존재하지 않습니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 없음"));
 
         Comment parentComment = null;
         if (dto.getParentCommentId() != null) {
@@ -61,9 +64,10 @@ public class CommentService {
             eventPublisher.publishEvent(
                     new CommentCreatedEvent(
                             this,
-                            post.getId(),
+                            savedComment.getId(),
                             user.getId(),        // 댓글 작성자
-                            post.getUser().getId() // 게시물 작성자
+                            post.getUser().getId(), // 게시물 작성자
+                            savedComment.getContent()
                     )
             );
         }
@@ -72,11 +76,11 @@ public class CommentService {
     }
 
     // 댓글 수정
-    public CommentResponseDto updateComment(Long commentId, String userId, CommentRequestDto dto, boolean isAdmin) {
+    public CommentResponseDto updateComment(Long commentId, Long userId, CommentRequestDto dto, boolean isAdmin) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
 
-        if (!isAdmin && !comment.getUser().getUserId().equals(userId)) {
+        if (!isAdmin && !comment.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("본인만 댓글을 수정할 수 있습니다.");
         }
 
@@ -84,20 +88,27 @@ public class CommentService {
         return CommentResponseDto.from(commentRepository.save(comment), commentLikeRepository, userId);
     }
 
-    // 댓글 삭제
-    public void deleteComment(Long commentId, String userId, boolean isAdmin) {
+    @Transactional
+    public void deleteComment(Long commentId, Long userId, boolean isAdmin) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
 
-        if (!isAdmin && !comment.getUser().getUserId().equals(userId)) {
+        if (!isAdmin && !comment.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("본인만 댓글을 삭제할 수 있습니다.");
         }
+
+        // 댓글 알림 제거 호출
+        notificationService.deleteCommentNotification(
+                comment.getPost().getUser().getId(),  // 알림 받는 사람 (게시글 작성자)
+                comment.getUser().getId(),            // 알림 발생자 (댓글 작성자)
+                comment.getId()                       // targetId = commentId
+        );
 
         commentRepository.delete(comment);
     }
 
     // 댓글 트리 조회
-    public Page<CommentResponseDto> getCommentTreeByPostId(Long postId, int page, int size, String currentUserId) {
+    public Page<CommentResponseDto> getCommentTreeByPostId(Long postId, int page, int size, Long currentUserId) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
 
         Page<Comment> parentComments = commentRepository.findByPost_IdAndStatusAndParentCommentIsNull(
@@ -119,11 +130,11 @@ public class CommentService {
     }
 
     // 댓글 신고
-    public void reportComment(Long commentId, String userId, String reason) {
+    public void reportComment(Long commentId, Long userId, String reason) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
 
-        User user = userRepository.findByUserId(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자가 존재하지 않습니다."));
 
         Report report = Report.builder()
@@ -138,11 +149,11 @@ public class CommentService {
 
     // 댓글 좋아요 추가
     @Transactional
-    public void addLike(Long commentId, String userId, LikeType type) {
-        if (!commentLikeRepository.existsByUser_UserIdAndComment_IdAndType(userId, commentId, type)) {
+    public void addLike(Long commentId, Long userId, LikeType type) {
+        if (!commentLikeRepository.existsByUser_IdAndComment_IdAndType(userId, commentId, type)) {
             Comment comment = commentRepository.findById(commentId)
                     .orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
-            User user = userRepository.findByUserId(userId)
+            User user = userRepository.findById(userId)
                     .orElseThrow(() -> new EntityNotFoundException("사용자가 존재하지 않습니다."));
 
             CommentLike like = CommentLike.builder()
@@ -157,15 +168,16 @@ public class CommentService {
 
     // 댓글 좋아요 취소
     @Transactional
-    public void removeLike(Long commentId, String userId, LikeType type) {
-        commentLikeRepository.deleteByUser_UserIdAndComment_IdAndType(userId, commentId, type);
+    public void removeLike(Long commentId, Long userId, LikeType type) {
+        commentLikeRepository.deleteByUser_IdAndComment_IdAndType(userId, commentId, type);
     }
 
     // 사용자가 좋아요 눌렀는지 확인
-    public boolean hasUserLiked(Long commentId, String userId, LikeType type) {
-        return commentLikeRepository.existsByUser_UserIdAndComment_IdAndType(userId, commentId, type);
+    public boolean hasUserLiked(Long commentId, Long userId, LikeType type) {
+        return commentLikeRepository.existsByUser_IdAndComment_IdAndType(userId, commentId, type);
     }
 
+    // 내가 쓴 댓글
     public List<MyCommentDto> getMyComments(Long userId) {
         return commentRepository.findByUser_Id(userId).stream()
                 .map(comment -> MyCommentDto.builder()

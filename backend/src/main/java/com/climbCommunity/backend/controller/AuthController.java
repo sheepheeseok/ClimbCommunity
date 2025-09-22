@@ -2,7 +2,6 @@ package com.climbCommunity.backend.controller;
 
 import com.climbCommunity.backend.dto.login.LoginReqeustDto;
 import com.climbCommunity.backend.dto.login.LoginResponseDto;
-import com.climbCommunity.backend.dto.login.UserInfoDto;
 import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.service.AuthService;
 import com.climbCommunity.backend.service.UserService;
@@ -65,8 +64,8 @@ public class AuthController {
     }
 
     @PostMapping("/findUserId")
-    public ResponseEntity<FindUserIdResponse> findUserId(@RequestBody FindUserIdRequest request) {
-        FindUserIdResponse response = authService.findUserId(request);
+    public ResponseEntity<FindUserIdResponseDto> findUserId(@RequestBody FindUserIdRequest request) {
+        FindUserIdResponseDto response = authService.findUserId(request);
         return ResponseEntity.ok(response);
     }
 

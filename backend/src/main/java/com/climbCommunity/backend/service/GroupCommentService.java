@@ -9,8 +9,10 @@ import com.climbCommunity.backend.entity.enums.NotificationType;
 import com.climbCommunity.backend.entity.enums.TargetType;
 import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.repository.*;
+import com.climbCommunity.backend.security.UserPrincipal;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,10 +57,11 @@ public class GroupCommentService {
         if (!author.getUserId().equals(userId)) {
             notificationService.createNotification(
                     author.getId(),
+                    user.getId(),
                     NotificationType.COMMENT,
                     TargetType.GROUP_RECRUITMENT,
                     group.getId(),
-                    user.getUsername() + " 님이 댓글을 달았습니다."
+                    " 님이 댓글을 달았습니다."
             );
         }
     }
@@ -142,10 +145,11 @@ public class GroupCommentService {
             if (!comment.getUser().getUserId().equals(userId)) {
                 notificationService.createNotification(
                         comment.getUser().getId(),
+                        user.getId(),
                         NotificationType.LIKE,
                         TargetType.COMMENT,
                         comment.getId(),
-                        user.getUsername() + " 님이 댓글에 좋아요를 눌렀습니다."
+                       " 님이 댓글에 좋아요를 눌렀습니다."
                 );
             }
         }

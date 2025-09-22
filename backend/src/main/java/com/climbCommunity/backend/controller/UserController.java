@@ -3,11 +3,10 @@ package com.climbCommunity.backend.controller;
 import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
+import com.climbCommunity.backend.exception.NotFoundException;
 import com.climbCommunity.backend.repository.UserAddressRepository;
-import com.climbCommunity.backend.repository.UserRepository;
 import com.climbCommunity.backend.security.UserPrincipal;
 import com.climbCommunity.backend.service.ProfileService;
-import com.climbCommunity.backend.service.S3Service;
 import com.climbCommunity.backend.service.UserService;
 import com.climbCommunity.backend.util.AddressUtil;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,10 +26,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
     private final ProfileService profileService;
-    private final S3Service s3Service;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
@@ -47,12 +43,12 @@ public class UserController {
     }
 
     @GetMapping("/myinfo")
-    public ResponseEntity<UserResponseDto> getMyInfo() {
+    public ResponseEntity<UserResponseDto> getMyInfo(@AuthenticationPrincipal UserPrincipal userPrincipal) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUserId = authentication.getName();
 
-        User user = userRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+        User user = userService.findById(userPrincipal.getId())
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
         // ✅ 대표 주소 조회
         UserAddress primaryAddress = userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
@@ -133,4 +129,13 @@ public class UserController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserSearchResponseDto>> searchUsers(
+            @RequestParam String query
+    ) {
+        List<UserSearchResponseDto> result = userService.searchUsersByUserIdPrefix(query);
+        return ResponseEntity.ok(result);
+    }
+
 }

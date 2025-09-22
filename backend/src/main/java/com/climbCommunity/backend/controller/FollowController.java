@@ -41,10 +41,11 @@ public class FollowController {
         if (!follower.getUserId().equals(followee.getUserId())) {
             notificationService.createNotification(
                     followee.getId(),                                    // 알림 받을 사용자 (팔로우 당한 사람)
+                    userPrincipal.getId(),
                     NotificationType.FOLLOW,                             // 알림 타입
                     TargetType.USER,                                                // 대상 타입 없음
                     follower.getId(),                                                // 대상 ID 없음
-                    follower.getUsername() + "님이 당신을 팔로우했습니다." // 메시지
+                    "님이 당신을 팔로우했습니다." // 메시지
             );
         }
         return ResponseEntity.ok(Map.of("message", "팔로우 성공"));

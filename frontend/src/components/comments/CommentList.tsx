@@ -8,9 +8,10 @@ type Props = {
     onReply: (comment: Comment) => void;
     refreshKey: number;
     onDeleted: () => void;
+    highlightCommentId?: number | null;
 };
 
-export default function CommentList({ postId, onReply, refreshKey, onDeleted }: Props) {
+export default function CommentList({ postId, onReply, refreshKey, onDeleted, highlightCommentId }: Props) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,8 +38,16 @@ export default function CommentList({ postId, onReply, refreshKey, onDeleted }: 
         <div className="space-y-4 pb-4">
             {comments.length > 0 ? (
                 comments.map((c) => (
-                    <CommentItem key={c.id} comment={c} onReply={onReply} postId={postId}           // ✅ 추가
-                                 onDeleted={onDeleted}/>
+                    <div key={c.id} id={`comment-${c.id}`}>
+                        <CommentItem
+                            key={c.id}
+                            comment={c}
+                            onReply={onReply}
+                            postId={postId}
+                            onDeleted={onDeleted}
+                            highlightCommentId={highlightCommentId}
+                        />
+                    </div>
                 ))
             ) : (
                 <p className="text-sm text-gray-500">댓글이 없습니다.</p>

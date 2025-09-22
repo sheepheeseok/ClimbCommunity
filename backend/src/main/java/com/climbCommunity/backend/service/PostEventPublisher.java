@@ -15,7 +15,7 @@ public class PostEventPublisher {
     private final SimpMessagingTemplate messagingTemplate;
 
     public void publishPostCreated(Post post) {
-        PostResponseDto dto = PostResponseDto.fromEntity(post, 0L);
+        PostResponseDto dto = PostResponseDto.fromEntity(post, 0L, 0L);
 
         messagingTemplate.convertAndSend("/topic/profile/" + post.getUser().getId(), dto);
     }

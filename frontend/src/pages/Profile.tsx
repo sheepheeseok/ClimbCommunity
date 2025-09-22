@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
-import { useMyProfile } from "@/hooks/ProfileHook";
+import { useMyProfile, useUserProfile } from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -11,9 +11,16 @@ interface Tab {
     icon: React.ComponentType<{ className?: string }>;
 }
 
-export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
+export const Profile: React.FC = () => {
+    const { userId } = useParams<{ userId?: string }>(); // ✅ URL 파라미터에서 userId 가져옴
     const [activeTab, setActiveTab] = useState<Tab["id"]>("posts");
-    const { profile, loading, error } = useMyProfile();
+
+    // ✅ userId 있으면 useUserProfile, 없으면 useMyProfile
+    const {
+        profile,
+        loading,
+        error
+    } = userId ? useUserProfile(userId) : useMyProfile();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
@@ -31,7 +38,6 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
     const getCurrentPosts = () => {
         switch (activeTab) {
             case "saved":
-                // 아직 API 없음 → 빈 배열 반환
                 return profile.savedPosts?.length ? profile.savedPosts : [];
             case "tagged":
                 return profile.taggedPosts?.length ? profile.taggedPosts : [];
@@ -43,7 +49,7 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
     const handleClickPost = async (postId: number) => {
         try {
             const res = await api.get(`/api/posts/${postId}`);
-            setSelectedPost(res.data); // ✅ 상세 데이터 세팅
+            setSelectedPost(res.data);
             setIsModalOpen(true);
         } catch (err) {
             console.error("게시물 상세 조회 실패:", err);
@@ -80,17 +86,20 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                                         <Award className="w-4 h-4 text-white" />
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-center md:justify-start gap-3">
-                                    <Link
-                                        to="/profile/settingPage"
-                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
-                                    >
-                                        프로필 편집
-                                    </Link>
-                                    <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                                        <Settings className="w-5 h-5 text-gray-600" />
-                                    </button>
-                                </div>
+                                {/* ⚡ 자기 프로필일 때만 편집 버튼 보이게 */}
+                                {!userId && (
+                                    <div className="flex items-center justify-center md:justify-start gap-3">
+                                        <Link
+                                            to="/profile/settingPage"
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
+                                        >
+                                            프로필 편집
+                                        </Link>
+                                        <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                                            <Settings className="w-5 h-5 text-gray-600" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Stats */}
@@ -169,15 +178,9 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                     ) : (
                         <div className="text-center py-16">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                {activeTab === "posts" && (
-                                    <Grid3x3 className="w-8 h-8 text-gray-400" />
-                                )}
-                                {activeTab === "saved" && (
-                                    <Bookmark className="w-8 h-8 text-gray-400" />
-                                )}
-                                {activeTab === "tagged" && (
-                                    <UserCheck className="w-8 h-8 text-gray-400" />
-                                )}
+                                {activeTab === "posts" && <Grid3x3 className="w-8 h-8 text-gray-400" />}
+                                {activeTab === "saved" && <Bookmark className="w-8 h-8 text-gray-400" />}
+                                {activeTab === "tagged" && <UserCheck className="w-8 h-8 text-gray-400" />}
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
                                 게시물이 없습니다.
@@ -186,6 +189,8 @@ export const Profile: React.FC<{ userId: string }> = ({ userId }) => {
                     )}
                 </div>
             </div>
+
+            {/* Post Detail Modal */}
             <PostDetailModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

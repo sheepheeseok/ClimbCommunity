@@ -14,12 +14,12 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> 
     long countByComment_IdAndType(Long commentId, LikeType type);
 
     // 특정 유저가 특정 댓글에 좋아요/싫어요 눌렀는지
-    boolean existsByUser_UserIdAndComment_IdAndType(String userId, Long commentId, LikeType type);
+    boolean existsByUser_IdAndComment_IdAndType(Long userId, Long commentId, LikeType type);
 
     // 특정 유저의 특정 댓글 좋아요/싫어요 삭제
     @Transactional
     @Modifying
-    void deleteByUser_UserIdAndComment_IdAndType(String userId, Long commentId, LikeType type);
+    void deleteByUser_IdAndComment_IdAndType(Long userId, Long commentId, LikeType type);
 
     List<CommentLike> findByUser_Id(Long userId);
     int countByUser_Id(Long userId);

@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.service;
 import com.climbCommunity.backend.dto.post.MediaDto;
+import com.climbCommunity.backend.dto.post.PostDeleteResponseDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
@@ -10,10 +11,7 @@ import com.climbCommunity.backend.entity.enums.Category;
 import com.climbCommunity.backend.entity.enums.PostStatus;
 import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.exception.NotFoundException;
-import com.climbCommunity.backend.repository.CommentRepository;
-import com.climbCommunity.backend.repository.PostImageRepository;
-import com.climbCommunity.backend.repository.PostRepository;
-import com.climbCommunity.backend.repository.PostVideoRepository;
+import com.climbCommunity.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,7 +31,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final S3Service s3Service;
     private final PostImageService postImageService;
-    private final PostVideoService postVideoService;
+    private final PostLikeRepository postLikeRepository;
     private final PostImageRepository postImageRepository;
     private final PostVideoRepository postVideoRepository;
     private final CommentRepository commentRepository;
@@ -58,6 +56,7 @@ public class PostService {
 
     public PostResponseDto toDto(Post post) {
         long commentCount = commentRepository.countByPost_Id(post.getId());
+        long likeCount = postLikeRepository.countByPost(post);
 
         return PostResponseDto.builder()
                 .id(post.getId())
@@ -83,6 +82,7 @@ public class PostService {
                 .location(post.getLocation())           // ✅ location 매핑
                 .completedProblems(post.getCompletedProblems()) // ✅ 완등 문제 매핑
                 .commentCount(commentCount)
+                .likeCount(likeCount)
                 .build();
     }
 
@@ -106,7 +106,7 @@ public class PostService {
     }
 
     @Transactional
-    public void deletePost(Long postId, Long userId) {
+    public PostDeleteResponseDto deletePost(Long postId, Long userId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("게시글을 찾을 수 없습니다."));
 
@@ -114,22 +114,19 @@ public class PostService {
             throw new AccessDeniedException("게시글 삭제 권한이 없습니다.");
         }
 
-        // ✅ 1. 연관된 데이터 먼저 삭제
-        postImageRepository.deleteByPost(post);     // post_images
-        postVideoRepository.deleteByPost(post);     // post_videos
-        commentRepository.deleteByPost(post);       // comments (게시글 댓글)
-
-        // ✅ 2. 게시글 삭제
+        // ✅ DB 삭제 (cascade로 연관 엔티티 자동 삭제)
         postRepository.delete(post);
 
-        // ✅ 3. S3 정리 (posts/{postId}/images, videos 전체 삭제)
+        // ✅ S3 삭제
         try {
-            s3Service.deletePostFolder(postId);
+            s3Service.deletePostFolder(userId, postId);  // userId 포함해야 prefix가 정확함
         } catch (Exception e) {
-            log.warn("S3 파일 삭제 중 예외 발생 (무시): postId={}", postId, e);
-            // 게시글 삭제 자체는 성공으로 처리
+            log.warn("⚠️ S3 파일 삭제 중 예외 발생 (무시): postId={}", postId, e);
         }
+
+        return new PostDeleteResponseDto(postId, "게시글이 성공적으로 삭제되었습니다.");
     }
+
 
     // 관리자 게시글 상태 변경
     public void adminUpdatePostStatus(Long postId, PostStatus status) {

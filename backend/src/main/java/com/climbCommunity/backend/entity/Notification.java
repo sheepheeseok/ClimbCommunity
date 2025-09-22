@@ -23,6 +23,10 @@ public class Notification {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_id", nullable = false)
+    private User actor;  // ✅ 새로 추가
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private NotificationType type;
@@ -34,6 +38,9 @@ public class Notification {
     private TargetType targetType;
 
     private Long targetId;
+
+    @Column(length = 100) // 댓글 미리보기, 최대 100자 정도
+    private String preview;
 
     @Builder.Default
     @Column(name = "is_read", nullable = false)

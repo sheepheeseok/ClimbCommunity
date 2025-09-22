@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-export const PrivacySettingsContent: React.FC = () => {
+export const PrivacySettings: React.FC = () => {
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -19,11 +19,11 @@ export const PrivacySettingsContent: React.FC = () => {
                 <h3 className="font-semibold text-gray-900">계정 유형</h3>
                 <label className="flex items-center space-x-3">
                     <input type="radio" name="accountType" value="public" defaultChecked />
-                    <span>공개 계정</span>
+                    <span className="text-black">공개 계정</span>
                 </label>
                 <label className="flex items-center space-x-3">
                     <input type="radio" name="accountType" value="private" />
-                    <span>비공개 계정</span>
+                    <span className="text-black">비공개 계정</span>
                 </label>
             </div>
         </motion.div>

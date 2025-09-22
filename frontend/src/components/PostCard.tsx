@@ -10,6 +10,9 @@ import { CompletedProblemsCount } from "@/components/CompletedProblemsCount";
 import { followService } from "@/services/followService";
 import { useAuth } from "@/hooks/useAuth";
 import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
+import { LikeService } from "@/services/LikeService";
+import {PostOptionsModal} from "@/modals/PostOptionsModal";
+import api from "@/lib/axios";
 
 type Media = {
     type: "image" | "video";
@@ -29,6 +32,7 @@ type PostCardProps = {
         commentCount: number;
         completedProblems?: Record<string, number>;
         mediaList: Media[];
+        likeCount?: number;
     };
     onCommentClick?: (post: any) => void;
 };
@@ -79,6 +83,30 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         }
     }, [post.userId, currentUserId]);
 
+    const [likeCount, setLikeCount] = useState<number>(post.likeCount ?? 0);
+
+    // ✅ 최초 좋아요 여부/갯수 불러오기
+    useEffect(() => {
+        LikeService.hasUserLiked(post.id).then(setLikeActive);
+        LikeService.getLikeCount(post.id).then(setLikeCount);
+    }, [post.id]);
+
+// ✅ 좋아요 토글 핸들러
+    const handleLike = async () => {
+        try {
+            const message = await LikeService.toggleLike(post.id);
+            if (message.includes("추가")) {
+                setLikeActive(true);
+                setLikeCount((c) => c + 1);
+            } else {
+                setLikeActive(false);
+                setLikeCount((c) => c - 1);
+            }
+        } catch (e) {
+            console.error("좋아요 실패:", e);
+        }
+    };
+
     // ✅ 버튼 클릭 → Optimistic Update
     const handleFollow = async () => {
         setIsFollowing(true);
@@ -109,6 +137,23 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             }
         },
     });
+
+    const [showOptions, setShowOptions] = useState(false);
+
+    const handleDelete = async () => {
+        try {
+            await api.delete(`/api/posts/${post.id}`);
+            alert("게시글이 삭제되었습니다.");
+            setShowOptions(false);
+
+            // ✅ 프론트 피드에서도 제거
+            window.location.reload(); // 간단히 새로고침
+            // 또는 부모에서 props로 posts state 내려줬다면: setPosts(prev => prev.filter(p => p.id !== post.id))
+        } catch (e) {
+            console.error(e);
+            alert("게시글 삭제 실패");
+        }
+    };
 
     // ✅ 더보기 처리
     const lines = post.content.split("\n");
@@ -160,7 +205,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                             </button>
                         )
                     )}
-                    <button className="text-gray-400 hover:text-gray-600">⋯</button>
+                    <button onClick={() => setShowOptions(true)} className="text-gray-400 hover:text-gray-600">⋯</button>
                 </div>
             </div>
 
@@ -244,26 +289,25 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             {/* Actions */}
             <div className="p-4 flex items-center justify-between">
                 <div className="flex space-x-5">
-                    <button
-                        onClick={() => setLikeActive(!likeActive)}
-                        className="cursor-pointer"
-                    >
-            <span className="flex items-center text-gray-700 hover:text-gray-500">
-              {likeActive ? (
-                  <LikeIconFilled className="w-6 h-6 animate-pop" />
-              ) : (
-                  <LikeIcon className="w-6 h-6 animate-pop" />
-              )}
-            </span>
+                    <button onClick={handleLike} className="cursor-pointer">
+                    <span className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-500">
+                        {likeActive ? (
+                            <LikeIconFilled className="w-6 h-6 animate-pop"/>
+                        ) : (
+                            <LikeIcon className="w-6 h-6 animate-pop"/>
+                        )}
+                        {likeCount}
+                    </span>
                     </button>
+
                     <button
                         onClick={() => onCommentClick && onCommentClick(post)}
                         className="flex items-center text-gray-700 hover:text-gray-500"
                     >
-                        <CommentIcon className="w-6 h-6" />
+                        <CommentIcon className="w-6 h-6"/>
                     </button>
                     <button className="flex items-center text-gray-700 hover:text-gray-500">
-                        <ShareIcon className="w-6 h-6" />
+                        <ShareIcon className="w-6 h-6"/>
                     </button>
                 </div>
                 <button
@@ -271,7 +315,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     className="flex items-center text-gray-700 hover:text-gray-500"
                 >
                     {saveActive ? (
-                        <SaveIconFilled className="w-6 h-6 animate-pop" />
+                        <SaveIconFilled className="w-6 h-6 animate-pop"/>
                     ) : (
                         <SaveIcon className="w-6 h-6 animate-pop" />
                     )}
@@ -327,6 +371,13 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     className="w-full text-sm text-black py-2 focus:outline-none"
                 />
             </div>
+            <PostOptionsModal
+                isOpen={showOptions}
+                onClose={() => setShowOptions(false)}
+                onDelete={handleDelete}
+                onReport={() => alert("신고하기 기능 연동 예정")}
+                isOwner={post.userId === currentUserId} // ✅ 본인 여부 체크
+            />
         </div>
     );
 }

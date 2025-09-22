@@ -2,10 +2,7 @@ package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.login.LoginReqeustDto;
 import com.climbCommunity.backend.dto.login.LoginResponseDto;
-import com.climbCommunity.backend.dto.user.FindPasswordRequest;
-import com.climbCommunity.backend.dto.user.FindPasswordResponse;
-import com.climbCommunity.backend.dto.user.FindUserIdRequest;
-import com.climbCommunity.backend.dto.user.FindUserIdResponse;
+import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Status;
@@ -16,7 +13,6 @@ import com.climbCommunity.backend.util.AddressUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +37,7 @@ public class AuthService {
             throw new BadCredentialsException("비밀번호가 올바르지 않습니다.");
         }
 
-        String token = jwtutil.generateToken(user.getUserId());
+        String token = jwtutil.generateToken(user);
 
         // ✅ 대표 주소 조회 및 분해
         UserAddress primaryAddress = userAddressRepository.findByUserIdAndIsPrimaryTrue(user.getId())
@@ -69,7 +65,7 @@ public class AuthService {
         );
     }
 
-    public FindUserIdResponse findUserId(FindUserIdRequest request) {
+    public FindUserIdResponseDto findUserId(FindUserIdRequest request) {
         User user = null;
 
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
@@ -82,7 +78,7 @@ public class AuthService {
             throw new IllegalArgumentException("정보가 입력해주세요");
         }
 
-        return new FindUserIdResponse(user.getUserId());
+        return new FindUserIdResponseDto(user.getUserId());
     }
 
     public FindPasswordResponse findPassword(FindPasswordRequest request) {

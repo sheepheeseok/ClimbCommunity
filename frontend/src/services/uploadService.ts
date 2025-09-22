@@ -5,9 +5,9 @@ interface UploadPostParams {
     formData: any;
     files: File[];
     thumbnails?: File[];
-    setUploadProgress: (progress: number) => void;     // 0~100
+    setUploadProgress: (progress: number) => void; // 0~100
     setProcessingProgress: (progress: number) => void; // 0~100
-    setTotalProgress: (progress: number) => void;      // 0~100
+    setTotalProgress: (progress: number) => void; // 0~100
 }
 
 export async function uploadPost({
@@ -20,7 +20,7 @@ export async function uploadPost({
                                  }: UploadPostParams) {
     const data = new FormData();
 
-    // JSON DTO (post)
+    // ✅ JSON DTO (post)
     const postBlob = new Blob([JSON.stringify(formData)], {
         type: "application/json",
     });
@@ -28,16 +28,16 @@ export async function uploadPost({
 
     console.log("🚀 업로드 시작: formData =", formData);
 
-    // 원본 파일 업로드
+    // ✅ 원본 파일 업로드 (드래그 순서 반영 → files 배열 자체가 정렬되어 있음)
     files.forEach((file, index) => {
         data.append("files", file);
-        data.append("fileOrder", String(index));
+        console.log(`📂 files[${index}] → ${file.name}`);
     });
 
-    // 썸네일 업로드
-    thumbnails.forEach((thumb, idx) => {
-        console.log(`🖼 FormData thumbnails 추가 [${idx}]:`, thumb.name);
+    // ✅ 썸네일 업로드
+    thumbnails.forEach((thumb, index) => {
         data.append("thumbnails", thumb);
+        console.log(`🖼 thumbnails[${index}] → ${thumb.name}`);
     });
 
     // === 1단계: 파일 업로드 (네트워크 전송 0~50%)
@@ -67,9 +67,10 @@ export async function uploadPost({
             let done = false;
 
             while (!done) {
-                const progressRes = await api.get<{ progress: number; complete: boolean }>(
-                    `/api/posts/${postId}/progress`
-                );
+                const progressRes = await api.get<{
+                    progress: number;
+                    complete: boolean;
+                }>(`/api/posts/${postId}/progress`);
 
                 const processingPercent = progressRes.data.progress; // 0~100
                 const weighted = 50 + Math.round((processingPercent / 100) * 50);

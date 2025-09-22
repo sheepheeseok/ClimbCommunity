@@ -1,17 +1,49 @@
-import React from "react";
 import { NotificationItem } from "@/components/NotificationItem";
-import { notificationService } from "@/services/notificationService";
 import { timeAgo } from "@/utils/timeAgo";
+import React, { useEffect, useRef } from "react";
 
 export const NotificationSidebar: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     notifications: any[];
     setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
-}> = ({ isOpen, onClose, notifications, setNotifications }) => {
+    openPostDetailModal: (post: any) => void;
+    navbarRef: React.RefObject<HTMLDivElement | null>;
+}> = ({ isOpen, onClose, notifications, setNotifications, openPostDetailModal, navbarRef }) => {
+
+    const sidebarRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+
+            // ✅ Sidebar 내부 클릭 → 무시
+            if (sidebarRef.current?.contains(target)) return;
+
+            // ✅ Navbar 내부 클릭 → 무시
+            if (navbarRef.current?.contains(target)) return;
+
+            onClose();
+        };
+
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen, onClose, navbarRef]);
+
+    const handleNotificationClick = (n: any) => {
+        if (n.type === "LIKE") {
+            openPostDetailModal({ postId: n.targetId });
+        } else if (n.type === "COMMENT") {
+            openPostDetailModal({ postId: n.postId, highlightCommentId: n.targetId});
+        }
+    };
 
     return (
-        <div className="p-6 h-full flex flex-col">
+        <div ref={sidebarRef} className="p-6 h-full flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">알림</h2>
@@ -34,12 +66,18 @@ export const NotificationSidebar: React.FC<{
                                 key={n.id}
                                 notification={{
                                     id: String(n.id),
-                                    username: n.type === "FOLLOW" ? "새 팔로워" : "시스템",
+                                    username: n.actorUsername || "", // actorUsername 내려받을 수 있으면 사용
+                                    actorUserId: n.actorUserId,
                                     action: n.message,
+                                    preview: n.preview,
                                     time: timeAgo(n.createdAt),
-                                    avatar: "/default-avatar.png", // TODO: 프로필 이미지 연동
+                                    profileImage: n.actorProfileImage,
                                     isRead: n.isRead,
+                                    type: n.type,
+                                    targetId: n.targetId,
+                                    postId: n.postId,
                                 }}
+                                onClick={handleNotificationClick}
                             />
                         ))}
                     </div>

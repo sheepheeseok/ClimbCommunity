@@ -1,10 +1,7 @@
 package com.climbCommunity.backend.service;
 
 import com.climbCommunity.backend.dto.location.Coordinate;
-import com.climbCommunity.backend.dto.user.ProfileResponseDto;
-import com.climbCommunity.backend.dto.user.UserLiteDto;
-import com.climbCommunity.backend.dto.user.UserRegisterRequestDto;
-import com.climbCommunity.backend.dto.user.UserUpdateRequestDto;
+import com.climbCommunity.backend.dto.user.*;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.UserAddress;
 import com.climbCommunity.backend.entity.enums.Grade;
@@ -24,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +55,10 @@ public class UserService {
 
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
     }
 
     public User registerUser(UserRegisterRequestDto dto) {
@@ -141,5 +143,17 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    public List<UserSearchResponseDto> searchUsersByUserIdPrefix(String prefix) {
+        List<User> users = userRepository.findByUserIdStartingWith(prefix);
+        return users.stream()
+                .map(user -> new UserSearchResponseDto(
+                        user.getId(),
+                        user.getUserId(),
+                        user.getUsername(),
+                        user.getProfileImage()
+                ))
+                .collect(Collectors.toList());
     }
 }

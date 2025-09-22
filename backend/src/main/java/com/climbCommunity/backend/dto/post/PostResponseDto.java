@@ -29,12 +29,13 @@ public class PostResponseDto {
     private String location;
     private Map<String, Integer> completedProblems;
     private long commentCount;
+    private long likeCount;
 
     public static PostResponseDto fromEntity(Post post) {
-        return fromEntity(post, 0L);
+        return fromEntity(post, 0L, 0L);
     }
 
-    public static PostResponseDto fromEntity(Post post, long commentCount) {
+    public static PostResponseDto fromEntity(Post post, long commentCount, long likeCount) {
         List<MediaDto> mediaList = new ArrayList<>();
 
         // 이미지 매핑
@@ -76,6 +77,7 @@ public class PostResponseDto {
                 .location(post.getLocation())
                 .completedProblems(post.getCompletedProblems())
                 .commentCount(commentCount)
+                .likeCount(likeCount)
                 .build();
     }
 

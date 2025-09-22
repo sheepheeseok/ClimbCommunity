@@ -5,14 +5,16 @@ import org.springframework.context.ApplicationEvent;
 
 @Getter
 public class CommentCreatedEvent extends ApplicationEvent {
-    private final Long postId;     // 댓글 단 게시물
-    private final Long commenterId; // 댓글 작성자
+    private final Long commentId;    // ✅ 댓글 ID
+    private final Long commenterId;  // 댓글 작성자
     private final Long postOwnerId; // 게시물 주인
+    private final String commentContent;
 
-    public CommentCreatedEvent(Object source, Long postId, Long commenterId, Long postOwnerId) {
+    public CommentCreatedEvent(Object source, Long commentId, Long commenterId, Long postOwnerId, String commentContent) {
         super(source);
-        this.postId = postId;
+        this.commentId = commentId;
         this.commenterId = commenterId;
         this.postOwnerId = postOwnerId;
+        this.commentContent = commentContent;
     }
 }

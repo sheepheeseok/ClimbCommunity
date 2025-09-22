@@ -12,8 +12,10 @@ import com.climbCommunity.backend.exception.AccessDeniedException;
 import com.climbCommunity.backend.repository.GroupApplicationRepository;
 import com.climbCommunity.backend.repository.GroupRecruitmentRepository;
 import com.climbCommunity.backend.repository.UserRepository;
+import com.climbCommunity.backend.security.UserPrincipal;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +57,7 @@ public class GroupApplicationService {
 
         notificationService.createNotification(
                 recruitment.getUser().getId(),
+                user.getId(),
                 NotificationType.JOIN_REQUEST,
                 TargetType.GROUP_RECRUITMENT,
                 recruitmentId,

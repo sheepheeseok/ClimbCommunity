@@ -1,4 +1,4 @@
-export { ProfileEditContent } from "./ProfileEditContent";
-export { NotificationSettingsContent } from "./NotificationSettingsContent";
-export { PrivacySettingsContent } from "./PrivacySettingsContent";
-export { BlockedAccountsContent } from "./BlockedAccountsContent";
+export { ProfileEdit } from "./ProfileEdit";
+export { NotificationSettings } from "./NotificationSettings";
+export { PrivacySettings } from "./PrivacySettings";
+export { BlockedAccounts } from "./BlockedAccounts";

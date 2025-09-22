@@ -7,6 +7,7 @@ import FindAccount from "@/pages/FindAccount";
 import {Profile} from "@/pages/Profile";
 import { useAuth } from "@/hooks/useAuth";
 import {SettingsPage} from "@/pages/SettingPage";
+import {MessagesPage} from "@/pages/MessagesPage";
 
 function App() {
     const { userId } = useAuth();
@@ -22,11 +23,20 @@ function App() {
                     path="/profile"
                     element={
                         <Layout>
-                            <Profile userId={userId ?? ""} />
+                            <Profile /> {/* ✅ useParams 없으므로 useMyProfile() 호출 */}
+                        </Layout>
+                    }
+                />
+                <Route
+                    path="/:userId/profile"
+                    element={
+                        <Layout>
+                            <Profile />
                         </Layout>
                     }
                 />
                 <Route path="/profile/settingPage" element={<Layout><SettingsPage/></Layout>}/>
+                <Route path="/messagesPage" element={<Layout><MessagesPage/></Layout>}/>
             </Routes>
         </BrowserRouter>
     );

@@ -35,7 +35,7 @@ export interface Profile {
 }
 
 // ✅ 공통 훅
-function useProfileFetcher(endpoint: string, userId?: string) {
+function useProfileFetcher(endpoint: string, subscribeUserId?: string) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -60,12 +60,12 @@ function useProfileFetcher(endpoint: string, userId?: string) {
         fetchData();
     }, [endpoint]);
 
-
+    // ✅ 실시간 WebSocket 구독 (게시글 추가 반영)
     useWebSocket(
-        userId
+        subscribeUserId
             ? [
                 {
-                    destination: `/topic/profile/${userId}`,
+                    destination: `/topic/profile/${subscribeUserId}`,
                     handler: (msg: IMessage) => {
                         try {
                             const newPost = JSON.parse(msg.body);
@@ -76,7 +76,7 @@ function useProfileFetcher(endpoint: string, userId?: string) {
                                         posts: [newPost, ...prev.posts],
                                         stats: {
                                             ...prev.stats,
-                                            posts: prev.stats.posts + 1, // ✅ 게시글 수 증가
+                                            posts: prev.stats.posts + 1,
                                         },
                                     }
                                     : prev

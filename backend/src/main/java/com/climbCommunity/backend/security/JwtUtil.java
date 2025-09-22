@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.security;
 
+import com.climbCommunity.backend.entity.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,9 +25,12 @@ public class JwtUtil {
     }
 
     // ✅ JWT 토큰 생성
-    public String generateToken(String userId) {
+    public String generateToken(User user) {
         return Jwts.builder()
-                .setSubject(userId)
+                .setSubject(user.getUserId()) // 비즈니스 ID (로그인 이름 같은 것)
+                .claim("id", user.getId())    // DB PK
+                .claim("username", user.getUsername()) // (선택) 프론트에 자주 쓰는 값도 claim 가능
+                .claim("role", user.getRole().name())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey, SignatureAlgorithm.HS256)
@@ -52,9 +56,12 @@ public class JwtUtil {
         return false;
     }
 
-    // ✅ userId(subject) 추출
+    public Long extractId(String token) {
+        return extractAllClaims(token).get("id", Long.class);
+    }
+
     public String extractUserId(String token) {
-        return extractAllClaims(token).getSubject();
+        return extractAllClaims(token).getSubject(); // 여전히 String userId
     }
 
     // ✅ Claims 추출 (iat, exp 등 포함)

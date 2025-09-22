@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.8",
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -37,6 +39,8 @@
     "react-hook-form": "^7.62.0",
     "react-responsive": "^10.0.1",
     "react-router-dom": "^7.7.1",
+    "sockjs-client": "^1.6.1",
+    "stompjs": "^2.3.3",
     "video-metadata-thumbnails": "^1.0.22",
     "zod": "^4.0.14"
   },
@@ -45,6 +49,8 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-dropzone": "^4.2.2",
+    "@types/sockjs-client": "^1.5.4",
+    "@types/stompjs": "^2.3.9",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.30.1",

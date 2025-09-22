@@ -84,22 +84,31 @@ public class S3Service {
         return fileUrl.substring(index + 5);
     }
 
-    public void deletePostFolder(Long postId) {
-        String prefix = "posts/" + postId + "/";
+    public void deletePostFolder(Long userId, Long postId) {
+        // 업로드할 때 썼던 prefix와 동일해야 함
+        String prefix = String.format("users/%d/posts/%d/", userId, postId);
 
         ObjectListing listing = amazonS3.listObjects(bucket, prefix);
         List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>();
 
-        for (S3ObjectSummary summary : listing.getObjectSummaries()) {
-            keys.add(new DeleteObjectsRequest.KeyVersion(summary.getKey()));
+        while (true) {
+            for (S3ObjectSummary summary : listing.getObjectSummaries()) {
+                keys.add(new DeleteObjectsRequest.KeyVersion(summary.getKey()));
+            }
+
+            if (listing.isTruncated()) {
+                listing = amazonS3.listNextBatchOfObjects(listing);
+            } else {
+                break;
+            }
         }
 
         if (!keys.isEmpty()) {
             DeleteObjectsRequest deleteRequest = new DeleteObjectsRequest(bucket).withKeys(keys);
             amazonS3.deleteObjects(deleteRequest);
-            log.info("S3 폴더 삭제 완료: {}", prefix);
+            log.info("✅ S3 폴더 삭제 완료: {}", prefix);
         } else {
-            log.info("삭제할 S3 파일이 없습니다: {}", prefix);
+            log.info("⚠️ 삭제할 S3 파일이 없습니다: {}", prefix);
         }
     }
 
@@ -161,6 +170,41 @@ public class S3Service {
         }
     }
 
+    public String uploadChatFile(MultipartFile file, Long roomId, Long senderId) {
+        validateFile(file);
 
+        String originalFilename = file.getOriginalFilename();
+        String extension = getExtension(originalFilename);
+        String uniqueFileName = UUID.randomUUID() + (extension != null && !extension.isBlank() ? "." + extension : "");
 
+        // ✅ 채팅 파일은 "chats/{roomId}/{senderId}/{uuid}.png" 구조
+        String key = String.format("chats/%d/%d/%s", roomId, senderId, uniqueFileName);
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(file.getContentType());
+        metadata.setContentLength(file.getSize());
+
+        try (InputStream inputStream = file.getInputStream()) {
+            PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
+            amazonS3.putObject(request);
+
+            log.info("✅ 채팅 파일 업로드 성공: {}", key);
+
+            return getFileUrl(key); // URL 반환
+        } catch (IOException e) {
+            log.error("❌ 채팅 파일 업로드 실패", e);
+            throw new RuntimeException("채팅 파일 업로드 실패", e);
+        }
+    }
+
+    public void deleteChatFile(String fileUrl) {
+        try {
+            String key = extractKeyFromUrl(fileUrl);
+            amazonS3.deleteObject(new DeleteObjectRequest(bucket, key));
+            log.info("✅ 채팅 파일 삭제 성공: {}", key);
+        } catch (Exception e) {
+            log.error("❌ 채팅 파일 삭제 실패: {}", fileUrl, e);
+            throw new RuntimeException("채팅 파일 삭제에 실패했습니다.");
+        }
+    }
 }

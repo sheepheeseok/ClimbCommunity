@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import {
-    ProfileEditContent,
-    NotificationSettingsContent,
-    PrivacySettingsContent,
-    BlockedAccountsContent,
+    ProfileEdit,
+    NotificationSettings,
+    PrivacySettings,
+    BlockedAccounts,
 } from "@/components/settings";
 
 export const SettingsPage: React.FC = () => {
@@ -20,13 +20,13 @@ export const SettingsPage: React.FC = () => {
     const renderContent = () => {
         switch (activeTab) {
             case "profile":
-                return <ProfileEditContent />;
+                return <ProfileEdit />;
             case "notifications":
-                return <NotificationSettingsContent />;
+                return <NotificationSettings />;
             case "privacy":
-                return <PrivacySettingsContent />;
+                return <PrivacySettings />;
             case "blocked":
-                return <BlockedAccountsContent />;
+                return <BlockedAccounts />;
         }
     };
 
@@ -34,7 +34,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex min-h-screen bg-gray-50">
             {/* 좌측 탭 */}
             <div className="w-80 bg-white border-r">
-                <h1 className="text-3xl font-bold p-6">설정</h1>
+                <h1 className="text-3xl font-bold p-6 text-black">설정</h1>
                 <nav className="space-y-2 px-4">
                     {tabs.map((tab) => (
                         <button

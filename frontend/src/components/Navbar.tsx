@@ -11,21 +11,56 @@ import { AddPostIconActive } from "@/components/icons/AddPostIconActive";
 
 import { UploadModalHook } from "@/hooks/UploadModalHook";
 import UploadModal from "@/modals/UploadModal";
-import { useState, useEffect } from "react";
+import {useState, useEffect, useRef} from "react";
 import { SearchSidebar } from "@/components/SearchSidebar";
 import { NotificationSidebar } from "@/components/NotificationSidebar";
 import { motion } from "framer-motion";
 import api from "@/lib/axios";
+import {PostDetailModal} from "@/modals/PostDetailModal";
+import { fetchPosts } from "@/services/postService";
 
 export default function Navbar() {
     const location = useLocation();
     const modal = UploadModalHook();
     const { isOpen, setIsOpen } = modal;
+    const navbarRef = useRef<HTMLDivElement>(null);
 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
+    const storedUser = localStorage.getItem("user");
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const [posts, setPosts] = useState<any[]>([]);
+    const [selectedPost, setSelectedPost] = useState<any | null>(null);
+    const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
+    const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+
+    useEffect(() => {
+        // 피드 게시물 캐시 (한 번만 불러옴)
+        fetchPosts().then((data) => setPosts(data));
+    }, []);
+
+    const openPostDetailModal = async ({ postId, highlightCommentId }: { postId: number; highlightCommentId?: number }) => {
+        let post = posts.find((p) => p.id === postId);
+
+        if (!post) {
+            // 피드에 없으면 API로 직접 불러오기
+            try {
+                const res = await api.get(`/api/posts/${postId}`);
+                post = res.data;
+            } catch (err) {
+                console.error("❌ 게시글 불러오기 실패:", err);
+                return;
+            }
+        }
+
+        setSelectedPost(post);
+        // highlightCommentId는 모달 props로 따로 넘김
+        setHighlightCommentId(highlightCommentId ?? null);
+    };
+
+
 
     useEffect(() => {
         const checkUnread = async () => {
@@ -69,30 +104,33 @@ export default function Navbar() {
         }
     };
 
+    const isMessagesPage = location.pathname.startsWith("/messagesPage");
     // ✅ 사이드바 열림 여부 → Navbar width 제어
-    const isAnySidebarOpen = isSearchOpen || isNotificationOpen;
+    const isAnySidebarOpen = isSearchOpen || isNotificationOpen || isMessagesPage;
 
     const menuItems = [
         { to: "/", label: "홈", icon: HomeIcon, activeIcon: HomeIconActive },
         { label: "검색", icon: SearchIcon, activeIcon: SearchIcon, isSearch: true },
-        { to: "/messages", label: "메시지", icon: Chatting, activeIcon: ChattingActive },
+        { to: "/messagesPage", label: "메시지", icon: Chatting, activeIcon: ChattingActive },
         { label: "알림", icon: BellIcon, activeIcon: BellIconActive, isNotification: true },
         { to: "/posts", label: "기록", icon: AddPostIcon, activeIcon: AddPostIconActive },
+        { to: "/profile", label: "프로필", isProfile: true },
     ];
 
     return (
         <>
             {/* ✅ 데스크탑 Navbar */}
             <motion.nav
-                initial={{ width: 256 }}
-                animate={{ width: isAnySidebarOpen ? 92 : 256 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                ref={navbarRef}
+                initial={{width: 256}}
+                animate={{width: isAnySidebarOpen ? 92 : 256}}
+                transition={{type: "spring", stiffness: 300, damping: 30}}
                 className="hidden lg:fixed lg:left-0 lg:top-16 lg:h-screen
                     lg:bg-white lg:border-r lg:border-gray-200 lg:p-4 lg:flex lg:flex-col
                     z-50"
             >
                 <div className="flex flex-col h-full space-y-2 flex-1">
-                    {menuItems.map(({ to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification }) => {
+                    {menuItems.map(({to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification, isProfile}) => {
                         const isActive = location.pathname === to;
 
                         // ✅ 검색 버튼
@@ -106,7 +144,7 @@ export default function Navbar() {
                                     }}
                                     className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black"
                                 >
-                                    <Icon className="w-6 h-6 flex-shrink-0" />
+                                    <Icon className="w-6 h-6 flex-shrink-0"/>
                                     {!isAnySidebarOpen && <span>{label}</span>}
                                 </button>
                             );
@@ -118,12 +156,12 @@ export default function Navbar() {
                                 <button
                                     key={`desktop-${label}`}
                                     onClick={handleNotificationClick}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
+                                    className="flex items-center gap-3.5 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
                                 >
-                                    <Icon className="w-6 h-6 flex-shrink-0" />
+                                    <Icon className="w-6 h-6 flex-shrink-0"/>
                                     {!isAnySidebarOpen && <span>{label}</span>}
                                     {hasUnread && (
-                                        <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full" />
+                                        <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full"/>
                                     )}
                                 </button>
                             );
@@ -141,12 +179,32 @@ export default function Navbar() {
                                             : "text-gray-700 hover:bg-gray-100 hover:text-black"
                                     }`}
                                 >
-                                    <Icon className="w-6 h-6 flex-shrink-0" />
+                                    {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
                                     {!isAnySidebarOpen && <span>{label}</span>}
                                 </button>
                             );
                         }
 
+                        if (isProfile) {
+                                return (
+                                    <Link
+                                        key="desktop-profile"
+                                        to={to!}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer hover:text-black ${
+                                            isActive
+                                                ? "text-black bg-gray-100 font-semibold"
+                                                : "text-gray-700 hover:bg-gray-100 hover:text-black"
+                                        }`}
+                                    >
+                                        <img
+                                            src={currentUser?.profileImage || "https://via.placeholder.com/40"}
+                                            alt="프로필"
+                                            className="w-7 h-7 rounded-full object-cover"
+                                        />
+                                        {!isAnySidebarOpen && <span>{label}</span>}
+                                    </Link>
+                                );
+                            }
                         // ✅ 일반 메뉴
                         return (
                             <Link
@@ -158,23 +216,25 @@ export default function Navbar() {
                                         : "text-gray-700 hover:bg-gray-100 hover:text-black"
                                 }`}
                             >
-                                <Icon className="w-6 h-6 flex-shrink-0" />
+                                {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
                                 {!isAnySidebarOpen && <span>{label}</span>}
                             </Link>
                         );
-                    })}
+                    }
+                    )}
                 </div>
             </motion.nav>
 
+
             {/* ✅ 검색 사이드바 */}
             <motion.div
-                initial={{ x: -320, opacity: 0 }}
-                animate={isSearchOpen ? { x: 92, opacity: 1 } : { x: -320, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                initial={{x: -320, opacity: 0}}
+                animate={isSearchOpen ? {x: 92, opacity: 1} : {x: -320, opacity: 0}}
+                transition={{type: "spring", stiffness: 260, damping: 30}}
                 className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)]
                     w-80 bg-white border-r border-gray-200 shadow-md z-40"
             >
-                <SearchSidebar isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+                <SearchSidebar navbarRef={navbarRef} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
             </motion.div>
 
             {/* ✅ 알림 사이드바 */}
@@ -190,8 +250,17 @@ export default function Navbar() {
                     onClose={() => setIsNotificationOpen(false)}
                     notifications={notifications} // ✅ props로 전달
                     setNotifications={setNotifications}
+                    openPostDetailModal={openPostDetailModal}
+                    navbarRef={navbarRef}
                 />
             </motion.div>
+
+            <PostDetailModal
+                isOpen={!!selectedPost}
+                onClose={() => setSelectedPost(null)}
+                post={selectedPost}
+                highlightCommentId={highlightCommentId}
+            />
 
             {/* ✅ 모바일 하단바 + UploadModal */}
             <UploadModal modal={modal} />

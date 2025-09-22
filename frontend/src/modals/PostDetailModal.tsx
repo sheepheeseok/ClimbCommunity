@@ -17,7 +17,12 @@ import { ShareIcon } from "@/components/icons/ShareIcon";
 import { SaveIcon, SaveIconFilled } from "@/components/icons/SaveIcon";
 import CommentList from "@/components/comments/CommentList";
 import type { Comment } from "@/components/comments/types";
+import { followService } from "@/services/followService";
+import { LikeService } from "@/services/LikeService";
+import { useAuth } from "@/hooks/useAuth";
+import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
 import api from "@/lib/axios";
+import { PostOptionsModal } from "@/modals/PostOptionsModal";
 
 interface Media {
     url: string;
@@ -35,48 +40,113 @@ interface Post {
     mediaList: Media[];
     thumbnailUrl: string;
     createdAt: string;
+    likeCount?: number;
 }
 
 interface PostDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     post: Post | null;
+    highlightCommentId?: number | null;
 }
 
 export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                                                     isOpen,
                                                                     onClose,
                                                                     post,
+                                                                    highlightCommentId,
                                                                 }) => {
-    // ✅ Hooks 최상단 고정
+    const { userId: currentUserId } = useAuth();
+
+    if (!isOpen || !post) {
+        return null;
+    }
+
+    // ✅ State
     const [currentIndex, setCurrentIndex] = useState(0);
     const [likeActive, setLikeActive] = useState(false);
+    const [likeCount, setLikeCount] = useState<number>(post?.likeCount ?? 0);
     const [saveActive, setSaveActive] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [newComment, setNewComment] = useState("");
     const [replyTo, setReplyTo] = useState<Comment | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isFollowing, setIsFollowing] = useState(false);
+
+    const [showOptions, setShowOptions] = useState(false);
 
     const inputRef = useRef<HTMLInputElement | null>(null);
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-    // ✅ 모달 열림/닫힘 제어
+    // ✅ WebSocket 이벤트 수신 (팔로우 실시간 동기화)
+    useFollowEvents({
+        userId: post.userId,
+        onFollowEvent: (event: FollowEvent) => {
+            if (event.followerId === currentUserId) {
+                setIsFollowing(event.following);
+            }
+        },
+    });
+
+// ✅ 모달 열림/닫힘 시 초기화
     useEffect(() => {
         if (isOpen) {
-            document.body.style.overflow = "hidden";
+            // 현재 스크롤 위치 저장
+            const scrollY = window.scrollY;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = "100%";
+
             setCurrentIndex(0);
             videoRefs.current = [];
+
+            if (post) {
+                setLikeCount(post.likeCount ?? 0);
+                // 좋아요 여부 확인
+                LikeService.hasUserLiked(post.id).then(setLikeActive);
+                LikeService.getLikeCount(post.id).then(setLikeCount);
+                // 팔로우 여부 확인
+                if (post.userId !== currentUserId) {
+                    followService
+                        .isFollowing(post.userId)
+                        .then((res) => setIsFollowing(res))
+                        .catch(() => setIsFollowing(false));
+                }
+            }
         } else {
-            document.body.style.overflow = "unset";
+            // 닫힐 때 body 스타일 원상복구 + 스크롤 위치 복원
+            const top = document.body.style.top;
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.width = "";
+            document.body.style.overflow = "auto";
+
+            if (top) {
+                const scrollY = parseInt(top || "0") * -1;
+                window.scrollTo(0, scrollY);
+            }
+
             videoRefs.current = [];
             setReplyTo(null);
             setNewComment("");
         }
+
+        // cleanup (컴포넌트 언마운트 시에도 원상복구)
         return () => {
-            document.body.style.overflow = "unset";
+            const top = document.body.style.top;
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.width = "";
+            document.body.style.overflow = "auto";
+
+            if (top) {
+                const scrollY = parseInt(top || "0") * -1;
+                window.scrollTo(0, scrollY);
+            }
             videoRefs.current = [];
         };
-    }, [isOpen]);
+    }, [isOpen, post, currentUserId]);
+
 
     // ✅ 영상 자동재생 제어
     useEffect(() => {
@@ -94,18 +164,16 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
 
     if (!isOpen || !post) return null;
 
-    // ✅ 댓글 전송 핸들러
+    // ✅ 댓글 전송
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.trim()) return;
-
         try {
             await api.post(`/api/posts/${post.id}/comments`, {
                 content: newComment,
                 parentCommentId: replyTo?.id || null,
             });
-
-            setRefreshKey((prev) => prev + 1); // 새로고침 트리거
+            setRefreshKey((prev) => prev + 1);
             setNewComment("");
             setReplyTo(null);
         } catch (err) {
@@ -113,7 +181,43 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         }
     };
 
-    // ✅ 답글 대상 지정
+    // ✅ 좋아요 토글
+    const handleLike = async () => {
+        try {
+            const message = await LikeService.toggleLike(post.id);
+            if (message.includes("추가")) {
+                setLikeActive(true);
+                setLikeCount((c) => c + 1);
+            } else {
+                setLikeActive(false);
+                setLikeCount((c) => Math.max(c - 1, 0));
+            }
+        } catch (e) {
+            console.error("좋아요 실패:", e);
+        }
+    };
+
+    // ✅ 팔로우/언팔로우
+    const handleFollow = async () => {
+        setIsFollowing(true);
+        try {
+            await followService.follow(post.userId);
+        } catch (e) {
+            console.error(e);
+            setIsFollowing(false);
+        }
+    };
+
+    const handleUnfollow = async () => {
+        setIsFollowing(false);
+        try {
+            await followService.unfollow(post.userId);
+        } catch (e) {
+            console.error(e);
+            setIsFollowing(true);
+        }
+    };
+
     const handleReply = (comment: Comment) => {
         setReplyTo(comment);
         inputRef.current?.focus();
@@ -123,8 +227,27 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         inputRef.current?.focus();
     };
 
+    const handleDelete = async () => {
+        try {
+            await api.delete(`/api/posts/${post.id}`);
+            alert("게시글이 삭제되었습니다.");
+            setShowOptions(false);
+            onClose(); // 모달 닫기
+        } catch (e) {
+            console.error("게시글 삭제 실패:", e);
+            alert("게시글 삭제에 실패했습니다.");
+        }
+    };
+
+    // ✅ 신고 핸들러
+    const handleReport = () => {
+        alert("신고 기능은 추후 연동 예정입니다.");
+        setShowOptions(false);
+    };
+
     const mediaList = post.mediaList || [];
 
+    // ==================== UI ====================
     const overlay = (
         <AnimatePresence>
             <motion.div
@@ -132,7 +255,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="fixed inset-0 bg-black bg-opacity-60 z-[9999] flex items-center justify-center"
+                className="fixed inset-0 bg-black bg-opacity-60 z-[500] flex items-center justify-center"
                 onClick={onClose}
             >
                 {/* Close 버튼 */}
@@ -202,7 +325,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                 </div>
                             ))}
                         </motion.div>
-
                         {/* 좌우 버튼 */}
                         {mediaList.length > 1 && (
                             <>
@@ -228,20 +350,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                 )}
                             </>
                         )}
-
-                        {/* 인디케이터 */}
-                        {mediaList.length > 1 && (
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2">
-                                {mediaList.map((_, i) => (
-                                    <span
-                                        key={i}
-                                        className={`w-2 h-2 rounded-full ${
-                                            i === currentIndex ? "bg-white" : "bg-white/50"
-                                        }`}
-                                    />
-                                ))}
-                            </div>
-                        )}
                     </div>
 
                     {/* Right: Details */}
@@ -250,58 +358,71 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                         <div className="flex items-center justify-between p-4 border-b">
                             <div className="flex items-center space-x-2">
                                 <img
-                                    src={post.profileImage || "/default-avatar.png"} // ✅ 프로필 이미지 or 기본 아바타
+                                    src={post.profileImage || "/default-avatar.png"}
                                     alt={post.username}
                                     className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                 />
                                 <div>
-                                    <div className="flex items-center space-x-1">
+                                    <div className="flex items-center space-x-2">
                                         <h3 className="font-semibold text-sm text-black">
                                             {post.userId}
                                         </h3>
-                                        <span className="text-xl font-bold text-gray-500">·</span>
-                                        <span className="text-sm font-semibold text-blue-600">
-          팔로우
-        </span>
+                                        {currentUserId &&
+                                            post.userId !== currentUserId &&
+                                            (isFollowing ? (
+                                                <button
+                                                    onClick={handleUnfollow}
+                                                    className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                                >
+                                                    팔로잉
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={handleFollow}
+                                                    className="text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600"
+                                                >
+                                                    팔로우
+                                                </button>
+                                            ))}
                                     </div>
                                     {post.location && (
                                         <p className="text-sm text-black">{post.location}</p>
                                     )}
                                 </div>
                             </div>
-                            <button className="p-2 hover:bg-gray-100 rounded-full">
+                            <button onClick={() => setShowOptions(true)} className="p-2 hover:bg-gray-100 rounded-full">
                                 <MoreHorizontal className="text-gray-600" />
                             </button>
                         </div>
 
                         {/* Content + 댓글 */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {/* 게시글 본문 */}
+                            {/* 본문 */}
                             <div className="flex items-start space-x-2">
                                 <img
-                                    src={post.profileImage || "/default-avatar.png"} // ✅ 동일 처리
+                                    src={post.profileImage || "/default-avatar.png"}
                                     alt={post.username}
                                     className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                 />
                                 <div>
-      <span className="font-semibold text-sm text-black mr-1">
-        {post.userId}
-      </span>
+                  <span className="font-semibold text-sm text-black mr-1">
+                    {post.userId}
+                  </span>
                                     <span className="text-gray-800 text-[15px] whitespace-pre-line">
-        {post.content}
-      </span>
+                    {post.content}
+                  </span>
                                     <p className="text-xs text-gray-500 mt-1">
                                         {post.createdAt ? timeAgo(post.createdAt) : ""}
                                     </p>
                                 </div>
                             </div>
 
-                            {/* ✅ 댓글 리스트 연결 + onReply 전달 */}
                             <CommentList
                                 postId={post.id}
                                 onReply={handleReply}
                                 refreshKey={refreshKey}
-                                onDeleted={() => setRefreshKey((k) => k + 1)} // ✅ 삭제 후 새로고침 트리거
+                                onDeleted={() => setRefreshKey((k) => k + 1)}
+                                highlightCommentId={highlightCommentId ?? undefined}
                             />
                         </div>
 
@@ -310,16 +431,15 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                             <div className="p-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex space-x-4">
-                                        <button
-                                            onClick={() => setLikeActive(!likeActive)}
-                                            className="cursor-pointer"
-                                        >
-                      <span className="flex items-center text-gray-700 hover:text-gray-500">
+                                        {/* 좋아요 + 개수 */}
+                                        <button onClick={handleLike} className="cursor-pointer">
+                      <span className="flex items-center gap-2 text-gray-700 hover:text-gray-500">
                         {likeActive ? (
                             <LikeIconFilled className="w-6 h-6 animate-pop" />
                         ) : (
                             <LikeIcon className="w-6 h-6 animate-pop" />
                         )}
+                          {likeCount}
                       </span>
                                         </button>
                                         <button
@@ -344,16 +464,17 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                     </button>
                                 </div>
 
+                                {/* 작성 시간 */}
                                 <p className="text-xs text-gray-500 mt-1">
                                     {post.createdAt ? timeAgo(post.createdAt) : ""}
                                 </p>
 
-                                {/* ✅ 답글 대상 표시 */}
+                                {/* 답글 대상 */}
                                 {replyTo && (
                                     <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between mt-1">
-    <span className="text-sm text-blue-700 font-medium">
-      @{replyTo.userId} 님에게 답글 작성 중
-    </span>
+                    <span className="text-sm text-blue-700 font-medium">
+                      @{replyTo.userId} 님에게 답글 작성 중
+                    </span>
                                         <button
                                             onClick={() => setReplyTo(null)}
                                             className="ml-3 text-gray-400 text-xs hover:text-gray-600"
@@ -362,7 +483,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                         </button>
                                     </div>
                                 )}
-
 
                                 {/* 댓글 입력창 */}
                                 <form onSubmit={handleSubmitComment} className="relative mt-2">
@@ -390,6 +510,13 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                     </div>
                 </motion.div>
             </motion.div>
+            <PostOptionsModal
+                isOpen={showOptions}
+                onClose={() => setShowOptions(false)}
+                onDelete={handleDelete}
+                onReport={handleReport}
+                isOwner={post.userId === currentUserId}
+            />
         </AnimatePresence>
     );
 

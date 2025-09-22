@@ -23,7 +23,7 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final UserRepository userRepository; // 필요시 DB fallback 용
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -51,13 +51,21 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (token != null && jwtUtil.validateToken(token)) {
             try {
-                // ✅ JWT에서 userId 추출
-                String userId = jwtUtil.extractUserId(token);
+                // ✅ JWT에서 값 추출
+                Long id = jwtUtil.extractId(token);                 // DB PK
+                String userId = jwtUtil.extractUserId(token);       // 비즈니스 ID
+                log.info(">>> JwtFilter parsed id={}, userId={}", id, userId);
+                String username = jwtUtil.extractAllClaims(token).get("username", String.class);
+                String role = jwtUtil.extractAllClaims(token).get("role", String.class);
 
-                User user = userRepository.findByUserId(userId)
-                        .orElseThrow(() -> new RuntimeException("인증된 사용자를 찾을 수 없습니다."));
-
-                UserPrincipal userPrincipal = UserPrincipal.fromEntity(user);
+                // ✅ UserPrincipal 직접 생성 (DB 조회 X)
+                UserPrincipal userPrincipal = new UserPrincipal(
+                        id,
+                        userId,
+                        username,
+                        "",      // 비밀번호는 토큰에서 불필요
+                        role
+                );
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
@@ -73,7 +81,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 log.warn("JWT 처리 오류: {}", e.getMessage());
             }
         } else {
-            log.info("👉 No valid JWT token found (cookie or Authorization header)");
+            log.debug("👉 No valid JWT token found (cookie or Authorization header)");
         }
 
         filterChain.doFilter(request, response);
@@ -99,3 +107,4 @@ public class JwtFilter extends OncePerRequestFilter {
         return null;
     }
 }
+

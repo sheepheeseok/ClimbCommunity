@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.controller;
 
+import com.climbCommunity.backend.dto.post.PostDeleteResponseDto;
 import com.climbCommunity.backend.dto.post.PostRequestDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
 import com.climbCommunity.backend.entity.Post;
@@ -65,10 +66,17 @@ public class PostController {
                 dto.getThumbnailIndex()
         );
 
-        return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost, 0L));
+        return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost, 0L, 0L));
     }
 
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<PostDeleteResponseDto> deletePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
+        PostDeleteResponseDto response = postService.deletePost(postId, userPrincipal.getId());
+        return ResponseEntity.ok(response);
+    }
 
     // 게시글 목록 조회 ( 카테고리별 조회 )
     @GetMapping
@@ -89,16 +97,6 @@ public class PostController {
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long postId) {
         Post post = postService.getPostById(postId);
         return ResponseEntity.ok(postService.toDto(post));
-    }
-
-    // 게시글 삭제
-    @DeleteMapping("/{postId}")
-    public ResponseEntity<Void> deletePost(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long postId) {
-
-        postService.deletePost(postId, userPrincipal.getId());
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{postId}/progress")

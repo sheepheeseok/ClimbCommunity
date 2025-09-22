@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useEffect, useRef, useState} from "react";
 import { timeAgo } from "@/utils/timeAgo";
 import type { Comment } from "./types";
 import CommentActionsModal from "../../modals/CommentActionsModal";
@@ -12,9 +12,10 @@ type Props = {
     onReply: (comment: Comment) => void;
     postId: number;
     onDeleted: () => void;
+    highlightCommentId?: number | null;
 };
 
-export default function CommentItem({ comment, onReply, postId, onDeleted }: Props) {
+export default function CommentItem({ comment, onReply, postId, onDeleted, highlightCommentId }: Props) {
     const [showReplies, setShowReplies] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
@@ -24,21 +25,44 @@ export default function CommentItem({ comment, onReply, postId, onDeleted }: Pro
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
     const isOwner = currentUser?.userId === comment.userId;
 
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!highlightCommentId) return;
+
+        const el = document.getElementById(`comment-${highlightCommentId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            el.classList.add("transition-colors", "duration-700", "bg-blue-300/40");
+
+            const timer = setTimeout(() => {
+                el.classList.remove("bg-blue-300/40");
+            }, 2000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [highlightCommentId]);
+
+
     const handleDelete = async () => {
         try {
             await api.delete(`/api/posts/${postId}/comments/${comment.id}`);
             console.log("댓글 삭제 성공:", comment.id);
-            onDeleted(); // ✅ 부모(PostDetailModal)에서 refreshKey 증가
+            onDeleted();
         } catch (err) {
             console.error("댓글 삭제 실패:", err);
         }
     };
 
     return (
-        <div className="flex items-start space-x-3 group">
+        <div
+            id={`comment-${comment.id}`}   // ✅ 댓글 DOM ID 부여
+            className="flex items-start space-x-3 group"
+        >
             {/* 프로필 */}
             <img
-                src={comment.profileImage || "/default-avatar.png"} // ✅ comment.profileImage 없으면 기본 아바타
+                src={comment.profileImage || "/default-avatar.png"}
                 alt={comment.userId}
                 className="w-8 h-8 rounded-full object-cover border border-gray-200"
             />
@@ -66,7 +90,6 @@ export default function CommentItem({ comment, onReply, postId, onDeleted }: Pro
                         답글 달기
                     </button>
 
-                    {/* ⋯ 버튼 (hover 시 표시) */}
                     <button
                         onClick={() => setModalOpen(true)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1"

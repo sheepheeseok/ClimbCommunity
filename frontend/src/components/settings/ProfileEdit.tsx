@@ -13,7 +13,7 @@ interface ProfileData {
     profileImage: string;
 }
 
-export const ProfileEditContent: React.FC = () => {
+export const ProfileEdit: React.FC = () => {
     const [profileData, setProfileData] = useState<ProfileData>({
         username: "",
         bio: "",

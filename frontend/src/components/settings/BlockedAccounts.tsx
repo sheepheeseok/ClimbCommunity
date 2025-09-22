@@ -9,7 +9,7 @@ interface BlockedUser {
     blockedDate: string;
 }
 
-export const BlockedAccountsContent: React.FC = () => {
+export const BlockedAccounts: React.FC = () => {
     const [blockedUsers] = useState<BlockedUser[]>([
         {
             id: "1",
@@ -41,7 +41,7 @@ export const BlockedAccountsContent: React.FC = () => {
                             key={user.id}
                             className="flex items-center justify-between p-4"
                         >
-                            <div className="flex items-center space-x-4">
+                            <div className="flex text-black items-center space-x-4">
                                 <img
                                     src={user.avatar}
                                     alt={user.username}
