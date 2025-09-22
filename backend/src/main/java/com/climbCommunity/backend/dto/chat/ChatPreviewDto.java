@@ -9,11 +9,14 @@ import lombok.Data;
 @AllArgsConstructor
 public class ChatPreviewDto {
     private Long roomId;
-    private Long userId;       // 상대방 userId
+    private Long partnerId;
+    private Long userId;
+    private String partnerUserId;
     private String username;     // 상대방 닉네임
     private String profileImage; // 상대방 프로필
     private String lastMessage;
+    private String type;
     private String timestamp;
-    private int unreadCount;
+    private long unreadCount;
     private boolean online;
 }

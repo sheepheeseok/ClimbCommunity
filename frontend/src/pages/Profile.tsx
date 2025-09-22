@@ -3,7 +3,8 @@ import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
 import { useMyProfile, useUserProfile } from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
-import { Link, useParams } from "react-router-dom";
+import {Link, useNavigate, useParams} from "react-router-dom";
+import {useAuth} from "@/hooks/useAuth";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -14,6 +15,8 @@ interface Tab {
 export const Profile: React.FC = () => {
     const { userId } = useParams<{ userId?: string }>(); // ✅ URL 파라미터에서 userId 가져옴
     const [activeTab, setActiveTab] = useState<Tab["id"]>("posts");
+    const { id: myUserId } = useAuth();
+    const navigate = useNavigate();
 
     // ✅ userId 있으면 useUserProfile, 없으면 useMyProfile
     const {
@@ -56,6 +59,45 @@ export const Profile: React.FC = () => {
         }
     };
 
+    const handleStartChat = async () => {
+        if (!userId || !myUserId) return;
+
+        try {
+            // 1. 먼저 내 채팅방 목록 조회
+            const resList = await api.get(`/api/chats/${myUserId}`);
+            const existingRoom = resList.data.find(
+                (room: any) =>
+                    room.partnerId === profile.id || room.userId === profile.id
+            );
+
+            if (existingRoom) {
+                // ✅ 이미 방이 있으면 바로 이동
+                navigate(`/messages/${existingRoom.roomId}`);
+                return;
+            }
+
+            // 2. 없으면 새 방 생성
+            const res = await api.post(
+                `/api/chats/room?userId1=${myUserId}&userId2=${profile.id}`
+            );
+
+            const roomId =
+                typeof res.data === "number"
+                    ? res.data
+                    : res.data?.roomId ?? res.data?.[0]?.roomId;
+
+            if (!roomId) {
+                alert("채팅방 생성 실패: roomId 없음");
+                return;
+            }
+
+            navigate(`/messages/${roomId}`);
+        } catch (err) {
+            console.error("❌ 채팅방 생성 실패:", err);
+            alert("채팅방 생성에 실패했습니다.");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-4xl mx-auto px-4 py-8">
@@ -87,7 +129,7 @@ export const Profile: React.FC = () => {
                                     </div>
                                 </div>
                                 {/* ⚡ 자기 프로필일 때만 편집 버튼 보이게 */}
-                                {!userId && (
+                                {!userId ? (
                                     <div className="flex items-center justify-center md:justify-start gap-3">
                                         <Link
                                             to="/profile/settingPage"
@@ -99,6 +141,15 @@ export const Profile: React.FC = () => {
                                             <Settings className="w-5 h-5 text-gray-600" />
                                         </button>
                                     </div>
+                                ) : (
+                                    <div className="flex items-center justify-center md:justify-start gap-3">
+                                        <button
+                                            onClick={handleStartChat}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
+                                        >
+                                            메시지 보내기
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
@@ -106,7 +157,7 @@ export const Profile: React.FC = () => {
                             <div className="flex justify-center md:justify-start gap-8 mb-6">
                                 <div className="text-center">
                                     <div className="text-xl font-bold text-gray-900">
-                                        {profile.stats.posts}
+                                    {profile.stats.posts}
                                     </div>
                                     <div className="text-sm text-gray-500">게시물</div>
                                 </div>

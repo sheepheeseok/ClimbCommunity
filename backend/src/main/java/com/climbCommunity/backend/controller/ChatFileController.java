@@ -19,10 +19,11 @@ public class ChatFileController {
     @PostMapping("/upload")
     public ResponseEntity<String> uploadChatFile(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("roomId") Long roomId,
-            @RequestParam("senderId") Long senderId
+            @RequestParam("accountId") Long accountId,
+            @RequestParam("partnerId") Long partnerId,
+            @RequestParam("roomId") Long roomId
     ) {
-        String fileUrl = s3Service.uploadChatFile(file, roomId, senderId);
+        String fileUrl = s3Service.uploadChatFile(file, roomId);
         return ResponseEntity.ok(fileUrl);
     }
 }

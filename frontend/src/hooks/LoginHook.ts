@@ -8,6 +8,7 @@ interface LoginForm {
 }
 
 interface LoginResponse {
+    id: number;
     userId: string;
     username: string;
     accessToken: string;
@@ -45,6 +46,7 @@ export function LoginHook() {
 
             // ✅ 사용자 정보는 localStorage에도 저장
             localStorage.setItem("user", JSON.stringify({
+                id: res.data.id,
                 userId: res.data.userId,
                 username: res.data.username,
                 profileImage: res.data.profileImage,

@@ -7,28 +7,43 @@ import com.climbCommunity.backend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ChatRoomService {
+
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
 
+    @Transactional
+    public ChatRoom createOrGetRoom(Long accountId, Long partnerId) {
+        User account = userRepository.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + accountId));
+        User partner = userRepository.findById(partnerId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + partnerId));
 
-    public ChatRoom createOrGetRoom(Long userId1, Long userId2) {
-        User user1 = userRepository.findById(userId1)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        User user2 = userRepository.findById(userId2)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        // 항상 작은 id가 user1, 큰 id가 user2
-        final User first  = user1.getId() < user2.getId() ? user1 : user2;
-        final User second = user1.getId() < user2.getId() ? user2 : user1;
-
-        return chatRoomRepository.findByUser1AndUser2(first, second)
-                .orElseGet(() -> chatRoomRepository.save(ChatRoom.builder()
-                        .user1(first)
-                        .user2(second)
-                        .build()));
+        // 양방향 체크
+        return chatRoomRepository.findByAccountAndPartner(account, partner)
+                .or(() -> chatRoomRepository.findByAccountAndPartner(partner, account))
+                .orElseGet(() -> chatRoomRepository.save(
+                        ChatRoom.builder()
+                                .account(account)
+                                .partner(partner)
+                                .build()
+                ));
     }
+
+    @Transactional(readOnly = true)
+    public List<ChatRoom> getMyRooms(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        // ✅ 내가 account 이든 partner 이든 모두 포함
+        return chatRoomRepository.findByAccountOrPartner(user, user);
+    }
+
 }
+

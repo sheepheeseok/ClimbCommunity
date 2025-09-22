@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "@/lib/axios";
-import { useNavigate } from "react-router-dom";
+import { useProfileNavigation } from "@/hooks/useProfileNavigation";
 
 // ✅ 최근 검색 항목 타입
 interface RecentSearch {
@@ -66,8 +66,8 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
     const [searchQuery, setSearchQuery] = useState("");
     const [results, setResults] = useState<UserResult[]>([]);
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
     const sidebarRef = useRef<HTMLDivElement>(null);
+    const { goToProfile } = useProfileNavigation(); // ✅ 훅 사용
 
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
         const saved = localStorage.getItem("recentSearches");
@@ -120,7 +120,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
         return () => clearTimeout(timeout);
     }, [searchQuery]);
 
-    // ✅ 최근 검색 추가 + 프로필 이동 + 사이드바 닫기
+    // ✅ 최근 검색 추가
     const handleSelectUser = (user: UserResult) => {
         setRecentSearches((prev) => {
             const filtered = prev.filter((item) => item.id !== user.id);
@@ -137,12 +137,6 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
 
         setSearchQuery("");
         setResults([]);
-
-        // ✅ 프로필 페이지로 이동
-        navigate(`/${user.userId}/profile`);
-
-        // ✅ 사이드바 닫기
-        onClose();
     };
 
     const removeSearchItem = (id: number) => {
@@ -190,7 +184,11 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                             {results.map((user) => (
                                 <div
                                     key={user.id}
-                                    onClick={() => handleSelectUser(user)}
+                                    onClick={(e) => {
+                                        handleSelectUser(user); // ✅ 최근검색 추가
+                                        goToProfile(e, user.userId); // ✅ 프로필 이동
+                                        onClose(); // ✅ 닫기
+                                    }}
                                     className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                                 >
                                     <img
@@ -233,9 +231,10 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                 {recentSearches.map((item) => (
                                     <div
                                         key={item.id}
-                                        onClick={() =>
-                                            navigate(`/${item.userId}/profile`)
-                                        }
+                                        onClick={(e) => {
+                                            goToProfile(e, item.userId); // ✅ 통일
+                                            onClose();
+                                        }}
                                         className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer"
                                     >
                                         <div className="flex items-center space-x-3 flex-1">

@@ -10,6 +10,7 @@ import java.util.List;
 @Setter
 @Builder
 public class ProfileResponseDto {
+    private Long id;
     private String userId;
     private String username;
     private String profileImage;

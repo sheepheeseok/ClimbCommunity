@@ -48,6 +48,7 @@ public class ProfileService {
                 .toList();
 
         return ProfileResponseDto.builder()
+                .id(user.getId())
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .profileImage(user.getProfileImage())

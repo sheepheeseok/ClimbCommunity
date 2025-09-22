@@ -170,41 +170,23 @@ public class S3Service {
         }
     }
 
-    public String uploadChatFile(MultipartFile file, Long roomId, Long senderId) {
+    public String uploadChatFile(MultipartFile file, Long roomId) {
         validateFile(file);
 
-        String originalFilename = file.getOriginalFilename();
-        String extension = getExtension(originalFilename);
-        String uniqueFileName = UUID.randomUUID() + (extension != null && !extension.isBlank() ? "." + extension : "");
+        String extension = getExtension(file.getOriginalFilename());
+        String fileName = UUID.randomUUID() + "." + extension;
 
-        // ✅ 채팅 파일은 "chats/{roomId}/{senderId}/{uuid}.png" 구조
-        String key = String.format("chats/%d/%d/%s", roomId, senderId, uniqueFileName);
+        String key = String.format("chats/%d/files/%s", roomId, fileName);
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(file.getContentType());
         metadata.setContentLength(file.getSize());
 
         try (InputStream inputStream = file.getInputStream()) {
-            PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
-            amazonS3.putObject(request);
-
-            log.info("✅ 채팅 파일 업로드 성공: {}", key);
-
-            return getFileUrl(key); // URL 반환
+            amazonS3.putObject(new PutObjectRequest(bucket, key, inputStream, metadata));
+            return getFileUrl(key);
         } catch (IOException e) {
-            log.error("❌ 채팅 파일 업로드 실패", e);
             throw new RuntimeException("채팅 파일 업로드 실패", e);
-        }
-    }
-
-    public void deleteChatFile(String fileUrl) {
-        try {
-            String key = extractKeyFromUrl(fileUrl);
-            amazonS3.deleteObject(new DeleteObjectRequest(bucket, key));
-            log.info("✅ 채팅 파일 삭제 성공: {}", key);
-        } catch (Exception e) {
-            log.error("❌ 채팅 파일 삭제 실패: {}", fileUrl, e);
-            throw new RuntimeException("채팅 파일 삭제에 실패했습니다.");
         }
     }
 }

@@ -3,10 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { WS_BROKER_URL } from "@/utils/config";
 import api from "@/lib/axios";
-import {useAuth} from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatPreview {
-    id: number; // roomId
+    roomId: number;
     user: {
         id: string;
         name: string;
@@ -18,6 +18,18 @@ interface ChatPreview {
     online: boolean;
 }
 
+// ✅ 메시지 변환 함수
+function formatLastMessage(type: string, content: string) {
+    switch (type) {
+        case "IMAGE":
+            return "📷 이미지";
+        case "VIDEO":
+            return "🎥 동영상";
+        default:
+            return content;
+    }
+}
+
 export function useChatList(myUserId: string) {
     const { id } = useAuth();
     const [chatList, setChatList] = useState<ChatPreview[]>([]);
@@ -25,18 +37,22 @@ export function useChatList(myUserId: string) {
 
     // ✅ 초기 목록 불러오기
     useEffect(() => {
-        if (!id) return; // 로그인 안 된 경우 방어 코드
+        if (!id) return;
         api.get(`/api/chats/${id}`).then((res) => {
-            setChatList(res.data);
+            const mapped = res.data.map((chat: any) => ({
+                ...chat,
+                lastMessage: formatLastMessage(chat.type, chat.lastMessage),
+            }));
+            setChatList(mapped);
         });
     }, [id]);
 
-    // ✅ WebSocket 연결 (한 번만 실행)
+    // ✅ WebSocket 연결
     useEffect(() => {
-        if (chatList.length === 0) return; // 방 정보 없으면 skip
+        if (chatList.length === 0) return;
 
         const client = new Client({
-            brokerURL: WS_BROKER_URL, // ws://EC2-IP:8080/ws
+            brokerURL: WS_BROKER_URL,
             connectHeaders: {
                 Authorization: "Bearer " + localStorage.getItem("accessToken"),
             },
@@ -46,25 +62,27 @@ export function useChatList(myUserId: string) {
         client.onConnect = () => {
             console.log("✅ ChatList WebSocket 연결 성공");
 
-            // 모든 채팅방 구독
-            chatList.forEach((chat) => {
-                client.subscribe(`/topic/chat/${chat.id}`, (frame: IMessage) => {
+            chatList.forEach((c) => {
+                client.subscribe(`/topic/chat/${c.roomId}`, (frame: IMessage) => {
                     const msg = JSON.parse(frame.body);
 
+                    if (msg.type === "TYPING") return;
+
                     setChatList((prev) =>
-                        prev.map((c) =>
-                            c.id === msg.roomId
+                        prev.map((chat) =>
+                            chat.roomId === msg.roomId
                                 ? {
-                                    ...c,
-                                    lastMessage:
-                                        msg.type === "CHAT"
-                                            ? msg.content
-                                            : msg.type === "IMAGE"
-                                                ? "📷 이미지"
-                                                : "🎥 동영상",
-                                    unreadCount: c.unreadCount + 1,
+                                    ...chat,
+                                    lastMessage: formatLastMessage(
+                                        msg.type,
+                                        msg.content
+                                    ),
+                                    unreadCount:
+                                        msg.senderId === id
+                                            ? chat.unreadCount
+                                            : chat.unreadCount + 1,
                                 }
-                                : c
+                                : chat
                         )
                     );
                 });
@@ -82,14 +100,26 @@ export function useChatList(myUserId: string) {
             client.deactivate();
             console.log("ChatList WebSocket Disconnected");
         };
-    }, [chatList.length]); // 방 개수 변경 시에만 재연결
+    }, [chatList.length]);
 
-    // ✅ 안읽은 메시지 초기화
-    const markAsRead = (roomId: number) => {
-        setChatList((prev) =>
-            prev.map((c) => (c.id === roomId ? { ...c, unreadCount: 0 } : c))
-        );
+    // ✅ 안읽은 메시지 초기화 (서버 + 프론트 상태 동기화)
+    const markAsRead = async (roomId: number) => {
+        try {
+            await api.patch(`/api/chats/${roomId}/read`, null, {
+                params: { userId: myUserId },
+            });
+
+            setChatList((prev) =>
+                prev.map((c) =>
+                    c.roomId === roomId ? { ...c, unreadCount: 0 } : c
+                )
+            );
+        } catch (err) {
+            console.error("❌ 읽음 처리 실패:", err);
+        }
     };
 
-    return { chatList, markAsRead };
+    const unreadRooms = chatList.filter((c) => c.unreadCount > 0).length;
+
+    return { chatList, markAsRead, unreadRooms }; // ✅ 함께 반환
 }

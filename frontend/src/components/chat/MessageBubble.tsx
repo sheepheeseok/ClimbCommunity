@@ -3,7 +3,7 @@ import { ChatMessage } from "@/hooks/useChat";
 
 interface Props {
     message: ChatMessage;
-    myUserId: string;
+    myUserId: number;
 }
 
 export function MessageBubble({ message, myUserId }: Props) {

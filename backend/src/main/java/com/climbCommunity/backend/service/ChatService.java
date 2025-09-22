@@ -1,9 +1,9 @@
 package com.climbCommunity.backend.service;
 
-import com.climbCommunity.backend.dto.chat.ChatMessageDto;
 import com.climbCommunity.backend.dto.chat.ChatPreviewDto;
-import com.climbCommunity.backend.entity.ChatRoom;
 import com.climbCommunity.backend.entity.Message;
+import com.climbCommunity.backend.dto.chat.ChatMessageDto;
+import com.climbCommunity.backend.entity.ChatRoom;
 import com.climbCommunity.backend.entity.User;
 import com.climbCommunity.backend.entity.enums.MessageType;
 import com.climbCommunity.backend.repository.ChatRoomRepository;
@@ -12,6 +12,7 @@ import com.climbCommunity.backend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -48,41 +49,55 @@ public class ChatService {
     }
 
     /**
+     * 특정 방의 메시지 조회 (오래된 순)
+     */
+    public List<Message> getMessages(Long roomId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found: " + roomId));
+
+        return messageRepository.findByRoomOrderByCreatedAtAsc(room);
+    }
+
+    /**
      * 1:1 채팅방 목록 조회
      */
-    public List<ChatPreviewDto> getChatList(Long userId) {
+    public List<ChatPreviewDto> getChatList(Long accountId) {
+        User me = userRepository.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + accountId));
+
+        // account/partner 구조 기반
+        List<ChatRoom> rooms = chatRoomRepository.findByAccountOrPartner(me, me);
+
+        return rooms.stream().map(room -> {
+            User partner = room.getAccount().equals(me) ? room.getPartner() : room.getAccount();
+
+            Message lastMsg = messageRepository.findTopByRoomOrderByCreatedAtDesc(room).orElse(null);
+
+            long unreadCount = messageRepository.countUnreadMessages(room, me);
+            return ChatPreviewDto.builder()
+                    .roomId(room.getId())                         // 방 PK
+                    .partnerId(partner.getId())                   // 상대방 PK
+                    .partnerUserId(partner.getUserId())           // 상대방 비즈니스 ID
+                    .username(partner.getUsername())
+                    .profileImage(partner.getProfileImage())
+                    .lastMessage(lastMsg != null ? lastMsg.getContent() : "")
+                    .type(lastMsg != null ? lastMsg.getType().name() : "CHAT")
+                    .timestamp(lastMsg != null ? lastMsg.getCreatedAt().format(FORMATTER) : null)
+                    .unreadCount(unreadCount)
+                    .online(false)    // TODO: Presence 구현
+                    .build();
+        }).toList();
+    }
+
+    @Transactional
+    public void markAsRead(Long roomId, Long userId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found: " + roomId));
+
         User me = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-        List<ChatRoom> rooms = chatRoomRepository.findByUser1OrUser2(me, me);
-
-        return rooms.stream().map(room -> {
-            // ✅ 상대방 찾기
-            User partner = room.getUser1().getId().equals(me.getId())
-                    ? room.getUser2() : room.getUser1();
-
-            // ✅ 최근 메시지
-            return messageRepository.findTopByRoomOrderByCreatedAtDesc(room)
-                    .map(lastMsg -> ChatPreviewDto.builder()
-                            .roomId(room.getId())
-                            .userId(partner.getId())
-                            .username(partner.getUsername())
-                            .profileImage(partner.getProfileImage())
-                            .lastMessage(lastMsg.getContent())
-                            .timestamp(lastMsg.getCreatedAt().format(FORMATTER))
-                            .unreadCount(0)   // TODO: 읽음 처리 로직 추가 가능
-                            .online(false)    // TODO: 추후 Presence 연동
-                            .build())
-                    .orElseGet(() -> ChatPreviewDto.builder()
-                            .roomId(room.getId())
-                            .userId(partner.getId())
-                            .username(partner.getUsername())
-                            .profileImage(partner.getProfileImage())
-                            .lastMessage("")   // 메시지가 아직 없는 방
-                            .timestamp(null)
-                            .unreadCount(0)
-                            .online(false)
-                            .build());
-        }).toList();
+        int updated = messageRepository.markMessagesAsRead(room, me);
+        System.out.println("✅ " + updated + " messages marked as read in room " + roomId);
     }
 }

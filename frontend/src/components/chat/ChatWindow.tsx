@@ -1,23 +1,34 @@
-// src/components/chat/ChatWindow.tsx
 import { useEffect, useRef, useState } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { MessageCircle } from "@/components/icons/MessageCircle";
 import { Send, Smile, Paperclip } from "@/components/icons/ChatIcons";
 import { useChat } from "@/hooks/useChat";
+import { TypingBubble } from "@/components/chat/TypingBubble";
 
 interface Props {
     activeChat: any;
-    myUserId: string;
+    myUserId: number;
+    markAsRead: (roomId: number) => void;
 }
 
-export function ChatWindow({ activeChat, myUserId }: Props) {
-    const { messages, typingUser, sendMessage, sendTyping, sendFile } = useChat(activeChat.roomId, myUserId);
+export function ChatWindow({ activeChat, myUserId, markAsRead }: Props) {
+    const { messages, typingUser, sendMessage, sendTyping, sendFile } = useChat(activeChat.roomId, myUserId, activeChat.partnerId);
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const typingTimeout = useRef<number | null>(null);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+        if (!messagesEndRef.current) return;
+
+        if (messages.length === 0) {
+            // 📌 메시지가 없으면 최상단으로 이동
+            const parent = messagesEndRef.current.parentElement;
+            if (parent) parent.scrollTop = 0;
+        } else {
+            // 📌 메시지가 있으면 마지막 메시지로 스크롤
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, typingUser]);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,8 +66,8 @@ export function ChatWindow({ activeChat, myUserId }: Props) {
                     className="w-10 h-10 rounded-full object-cover"
                 />
                 <div>
-                    <h3 className="font-semibold text-gray-900">{activeChat.username}</h3>
-                    <p className="text-sm text-gray-500">@{activeChat.userId}</p>
+                    <h3 className="font-semibold text-gray-900">{activeChat.username}님</h3>
+                    <p className="text-xs text-gray-500">{activeChat.partnerUserId}</p>
                 </div>
             </div>
 
@@ -65,9 +76,14 @@ export function ChatWindow({ activeChat, myUserId }: Props) {
                 {messages.map((msg, idx) => (
                     <MessageBubble key={idx} message={msg} myUserId={myUserId} />
                 ))}
+
+                {/* ✅ 상대방 입력 중 표시 */}
                 {typingUser && (
-                    <div className="text-gray-500 italic text-sm ml-2">상대방이 입력중...</div>
+                    <div className="flex justify-start mt-2">
+                        <TypingBubble />
+                    </div>
                 )}
+
                 <div ref={messagesEndRef} />
             </div>
 
@@ -86,7 +102,14 @@ export function ChatWindow({ activeChat, myUserId }: Props) {
                         value={newMessage}
                         onChange={(e) => {
                             setNewMessage(e.target.value);
-                            sendTyping();
+
+                            // 🔥 디바운스 적용
+                            if (typingTimeout.current) {
+                                clearTimeout(typingTimeout.current);
+                            }
+                            typingTimeout.current = window.setTimeout(() => {
+                                sendTyping();
+                            }, 1000);
                         }}
                         placeholder="메시지를 입력하세요..."
                         className="flex-1 px-4 py-3 text-black bg-gray-50 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"

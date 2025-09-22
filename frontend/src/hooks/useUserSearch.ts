@@ -1,6 +1,7 @@
 // src/hooks/useUserSearch.ts
 import { useState, useEffect } from "react";
 import api from "@/lib/axios"; // 희석님이 이미 만든 axios 인스턴스
+import { useAuth } from "@/hooks/useAuth";
 
 interface UserResult {
     id: number;

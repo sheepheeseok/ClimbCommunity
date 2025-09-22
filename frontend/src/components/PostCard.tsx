@@ -13,6 +13,7 @@ import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
 import { LikeService } from "@/services/LikeService";
 import {PostOptionsModal} from "@/modals/PostOptionsModal";
 import api from "@/lib/axios";
+import { useProfileNavigation } from "@/hooks/useProfileNavigation";
 
 type Media = {
     type: "image" | "video";
@@ -40,6 +41,7 @@ type PostCardProps = {
 export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const { userId: currentUserId } = useAuth();
     const mediaList: Media[] = post.mediaList || [];
+    const { goToProfile } = useProfileNavigation();
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expanded, setExpanded] = useState(false);
@@ -171,12 +173,13 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     <img
                         src={post.profileImage || "/default-avatar.png"} // ✅ null이면 기본 아바타
                         alt={post.username}
-                        className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                        className="w-10 h-10 cursor-pointer rounded-full object-cover border border-gray-200"
+                        onClick={(e) => goToProfile(e, post.userId)}
                     />
 
                     <div>
                         <div className="flex items-center space-x-1">
-                            <h3 className="font-semibold text-sm text-black">{post.username}</h3>
+                            <h3 onClick={(e) => goToProfile(e, post.userId)} className="font-semibold cursor-pointer text-sm text-black">{post.username}</h3>
                             <span className="text-xl font-bold text-gray-500">·</span>
                             <span className="text-sm text-gray-500">
           {post.createdAt ? timeAgo(post.createdAt) : ""}

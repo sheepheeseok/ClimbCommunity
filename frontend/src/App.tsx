@@ -10,7 +10,6 @@ import {SettingsPage} from "@/pages/SettingPage";
 import {MessagesPage} from "@/pages/MessagesPage";
 
 function App() {
-    const { userId } = useAuth();
 
     return (
         <BrowserRouter>
@@ -36,7 +35,8 @@ function App() {
                     }
                 />
                 <Route path="/profile/settingPage" element={<Layout><SettingsPage/></Layout>}/>
-                <Route path="/messagesPage" element={<Layout><MessagesPage/></Layout>}/>
+                <Route path="/messages/:roomId" element={<Layout><MessagesPage/></Layout>} />
+                <Route path="/chatPage" element={<Layout><MessagesPage/></Layout>}/>
             </Routes>
         </BrowserRouter>
     );

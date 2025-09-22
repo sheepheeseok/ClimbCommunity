@@ -2,7 +2,11 @@ package com.climbCommunity.backend.entity;
 
 import com.climbCommunity.backend.entity.enums.MessageType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -11,34 +15,34 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "messages")
 public class Message {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ 메시지 보낸 사람
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
-
-    // ✅ 채팅방
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
     private ChatRoom room;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User sender;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private MessageType type;
 
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false)
     private String content;
 
     @Column(nullable = false, updatable = false)
+    @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private boolean isRead;
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.isRead = false; // 기본은 안 읽음
     }
 }

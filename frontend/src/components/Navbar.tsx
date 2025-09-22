@@ -19,6 +19,9 @@ import api from "@/lib/axios";
 import {PostDetailModal} from "@/modals/PostDetailModal";
 import { fetchPosts } from "@/services/postService";
 
+import { useChatList } from "@/hooks/useChatList"; // ✅ 추가
+import { useAuth } from "@/hooks/useAuth"; // ✅ 로그인 유저 가져오기
+
 export default function Navbar() {
     const location = useLocation();
     const modal = UploadModalHook();
@@ -31,6 +34,8 @@ export default function Navbar() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const storedUser = localStorage.getItem("user");
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+    const { id: myUserId } = useAuth();
     const [posts, setPosts] = useState<any[]>([]);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
     const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
@@ -60,6 +65,8 @@ export default function Navbar() {
         setHighlightCommentId(highlightCommentId ?? null);
     };
 
+    const { chatList } = useChatList(String(myUserId));
+    const hasUnreadMessages = chatList.some((c) => c.unreadCount > 0);
 
 
     useEffect(() => {
@@ -104,14 +111,15 @@ export default function Navbar() {
         }
     };
 
-    const isMessagesPage = location.pathname.startsWith("/messagesPage");
+    const isMessagesPage = location.pathname.startsWith("/ChatPage");
+    const isMessages = location.pathname.startsWith("/messages");
     // ✅ 사이드바 열림 여부 → Navbar width 제어
-    const isAnySidebarOpen = isSearchOpen || isNotificationOpen || isMessagesPage;
+    const isAnySidebarOpen = isSearchOpen || isNotificationOpen || isMessagesPage || isMessages;
 
     const menuItems = [
         { to: "/", label: "홈", icon: HomeIcon, activeIcon: HomeIconActive },
         { label: "검색", icon: SearchIcon, activeIcon: SearchIcon, isSearch: true },
-        { to: "/messagesPage", label: "메시지", icon: Chatting, activeIcon: ChattingActive },
+        { to: "/ChatPage", label: "메시지", icon: Chatting, activeIcon: ChattingActive, isMessages: true },
         { label: "알림", icon: BellIcon, activeIcon: BellIconActive, isNotification: true },
         { to: "/posts", label: "기록", icon: AddPostIcon, activeIcon: AddPostIconActive },
         { to: "/profile", label: "프로필", isProfile: true },
@@ -130,7 +138,7 @@ export default function Navbar() {
                     z-50"
             >
                 <div className="flex flex-col h-full space-y-2 flex-1">
-                    {menuItems.map(({to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification, isProfile}) => {
+                    {menuItems.map(({to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification, isProfile, isMessages}) => {
                         const isActive = location.pathname === to;
 
                         // ✅ 검색 버튼
@@ -184,8 +192,23 @@ export default function Navbar() {
                                 </button>
                             );
                         }
+                            if (isMessages) {
+                                return (
+                                    <Link
+                                        key={`desktop-${to}`}
+                                        to={to!}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
+                                    >
+                                        {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
+                                        {!isAnySidebarOpen && <span>{label}</span>}
+                                        {hasUnreadMessages && (
+                                            <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full" />
+                                        )}
+                                    </Link>
+                                );
+                            }
 
-                        if (isProfile) {
+                            if (isProfile) {
                                 return (
                                     <Link
                                         key="desktop-profile"
@@ -210,7 +233,7 @@ export default function Navbar() {
                             <Link
                                 key={`desktop-${to}`}
                                 to={to!}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer ${
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer hover:text-black ${
                                     isActive
                                         ? "text-black bg-gray-100 font-semibold"
                                         : "text-gray-700 hover:bg-gray-100 hover:text-black"

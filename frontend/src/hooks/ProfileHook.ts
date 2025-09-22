@@ -15,6 +15,7 @@ export interface UserLite {
 }
 
 export interface Profile {
+    id: number;
     userId: string;
     username: string;
     profileImage: string;

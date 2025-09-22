@@ -18,9 +18,9 @@ export function ChatList({ conversations, activeChat, onChatSelect }: Props) {
     );
 
     return (
-        <div className="flex flex-col h-full min-w-[250px] max-w-sm bg-white border-r border-gray-200">
+        <div className="flex flex-col flex-1 h-full min-h-0"> {/* ✅ 전체 영역 차지 */}
             {/* 검색창 */}
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-4 border-b border-gray-100 shrink-0"> {/* ✅ 고정 */}
                 <div className="relative">
                     <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -35,16 +35,16 @@ export function ChatList({ conversations, activeChat, onChatSelect }: Props) {
             </div>
 
             {/* 대화 리스트 */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-white w-80 max-w-80 border-r"> {/* ✅ 스크롤 가능 */}
                 {filteredConversations.map((conv) => (
                     <motion.button
                         key={conv.roomId}
                         onClick={() => onChatSelect(conv)}
-                        className={`w-full p-4 flex items-center space-x-3 
+                        className={`w-full p-4 flex items-center space-x-3
                                     hover:bg-gray-50 transition-colors
                                     ${activeChat?.roomId === conv.roomId ? "bg-blue-50" : ""}`}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{scale: 1.02}}
+                        whileTap={{scale: 0.98}}
                     >
                         <img
                             src={conv.profileImage}
@@ -56,7 +56,13 @@ export function ChatList({ conversations, activeChat, onChatSelect }: Props) {
                                 <h3 className="font-semibold text-gray-900 text-sm truncate">
                                     {conv.username}
                                 </h3>
-                                <span className="text-xs text-gray-500">{conv.timestamp}</span>
+                                <span className="text-xs text-gray-500"> {conv.timestamp
+                                    ? new Date(conv.timestamp).toLocaleDateString("ko-KR", {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                    })
+                                    : ""}</span>
                             </div>
                             <p className={`text-sm truncate ${conv.unreadCount > 0 ? "font-medium text-gray-900" : "text-gray-600"}`}>
                                 {conv.lastMessage || "대화 없음"}

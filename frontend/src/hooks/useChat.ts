@@ -8,19 +8,33 @@ export interface ChatMessage {
     id?: number;
     type: "CHAT" | "IMAGE" | "VIDEO" | "TYPING";
     roomId: number;
-    senderId: string;
+    senderId: number;   // ✅ number로
     content: string;
+    createdAt?: string;
 }
 
-export function useChat(roomId: number, myUserId: string) {
+export function useChat(roomId: number, myUserId: number, partnerId?: number) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [typingUser, setTypingUser] = useState<string | null>(null);
+    const [typingUser, setTypingUser] = useState<number | null>(null);
     const clientRef = useRef<Client | null>(null);
 
-    // ✅ WebSocket 연결
+    // 초기 메시지 로딩
+    useEffect(() => {
+        const fetchMessages = async () => {
+            try {
+                const res = await api.get<ChatMessage[]>(`/api/chats/${roomId}/messages`);
+                setMessages(res.data);
+            } catch (err) {
+                console.error("메시지 불러오기 실패:", err);
+            }
+        };
+        if (roomId) fetchMessages();
+    }, [roomId]);
+
+    // WebSocket 연결
     useEffect(() => {
         const client = new Client({
-            brokerURL: WS_BROKER_URL, // 예: ws://13.208.176.244:8080/ws
+            brokerURL: WS_BROKER_URL,
             connectHeaders: {
                 Authorization: "Bearer " + localStorage.getItem("accessToken"),
             },
@@ -33,10 +47,15 @@ export function useChat(roomId: number, myUserId: string) {
             client.subscribe(`/topic/chat/${roomId}`, (frame: IMessage) => {
                 const msg: ChatMessage = JSON.parse(frame.body);
 
-                if (msg.type === "TYPING" && msg.senderId !== myUserId) {
-                    setTypingUser(msg.senderId);
-                    setTimeout(() => setTypingUser(null), 2000);
+                if (msg.type === "TYPING") {
+                    // 내가 보낸 typing은 무시, 상대방 것만 표시
+                    if (msg.senderId !== myUserId) {
+                        setTypingUser(msg.senderId);
+                        setTimeout(() => setTypingUser(null), 2000);
+                    }
                 } else {
+                    // 메시지가 오면 typing 상태 해제
+                    setTypingUser(null);
                     setMessages((prev) => [...prev, msg]);
                 }
             });
@@ -54,7 +73,7 @@ export function useChat(roomId: number, myUserId: string) {
         };
     }, [roomId, myUserId]);
 
-    // ✅ 메시지 전송
+    // 메시지 전송
     const sendMessage = (content: string, type: "CHAT" | "IMAGE" | "VIDEO" = "CHAT") => {
         if (!clientRef.current || !clientRef.current.connected) return;
 
@@ -71,7 +90,7 @@ export function useChat(roomId: number, myUserId: string) {
         });
     };
 
-    // ✅ 입력중 이벤트 전송
+    // 입력중 이벤트 전송
     const sendTyping = () => {
         if (!clientRef.current || !clientRef.current.connected) return;
 
@@ -88,12 +107,15 @@ export function useChat(roomId: number, myUserId: string) {
         });
     };
 
-    // ✅ 파일 업로드 → WebSocket 메시지 전송
+    // 파일 업로드 → 메시지 전송
     const sendFile = async (file: File) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("roomId", roomId.toString());
-        formData.append("senderId", myUserId);
+        formData.append("accountId", myUserId.toString());   // ✅ 추가
+        if (partnerId !== undefined) {
+            formData.append("partnerId", partnerId.toString());
+        }
 
         const res = await api.post("/api/chat/upload", formData, {
             headers: { "Content-Type": "multipart/form-data" },

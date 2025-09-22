@@ -26,6 +26,7 @@ public class UserResponseDto {
 
     public static UserResponseDto fromEntity(User user) {
         return UserResponseDto.builder()
+                .id(user.getId())
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .bio(user.getBio())
