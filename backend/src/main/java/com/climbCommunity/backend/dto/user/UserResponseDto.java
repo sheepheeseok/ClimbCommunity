@@ -23,8 +23,9 @@ public class UserResponseDto {
     private String status;
     private String profileImage;
     private LocalDateTime createdAt;
+    private boolean isFollowing;
 
-    public static UserResponseDto fromEntity(User user) {
+    public static UserResponseDto fromEntity(User user, boolean isFollowing) {
         return UserResponseDto.builder()
                 .id(user.getId())
                 .userId(user.getUserId())
@@ -32,6 +33,7 @@ public class UserResponseDto {
                 .bio(user.getBio())
                 .profileImage(user.getProfileImage())
                 .website(user.getWebsite())
+                .isFollowing(isFollowing)
                 .build();
     }
 }

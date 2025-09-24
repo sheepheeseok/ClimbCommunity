@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from "react";
 import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
-import { useMyProfile, useUserProfile } from "@/hooks/ProfileHook";
+import {useFollowers, useFollowing, useMyProfile, useUserProfile} from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useAuth} from "@/hooks/useAuth";
 import { followService } from "@/services/followService";
+import { FollowersModal } from "@/modals/FollowersModal";
+
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -26,10 +28,15 @@ export const Profile: React.FC = () => {
         error
     } = userId ? useUserProfile(userId) : useMyProfile();
 
+    const { followers } = useFollowers(profile?.userId);
+    const { following } = useFollowing(profile?.userId);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
     const [isFollowing, setIsFollowing] = useState<boolean>(false);
+    const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+    const [isFollowingOpen, setIsFollowingOpen] = useState(false);
 
     useEffect(() => {
         if (userId && myUserId && profile?.userId) {
@@ -198,21 +205,26 @@ export const Profile: React.FC = () => {
                                     </div>
                                     <div className="text-sm text-gray-500">게시물</div>
                                 </div>
-                                <div className="text-center">
-                                <div className="text-xl font-bold text-gray-900">
+                                <button
+                                    onClick={() => setIsFollowersOpen(true)} // ✅ 팔로워 모달 열기
+                                    className="text-center"
+                                >
+                                    <div className="text-xl font-bold text-gray-900">
                                         {profile.stats.followers}
                                     </div>
                                     <div className="text-sm text-gray-500">팔로워</div>
-                                </div>
-                                <div className="text-center">
+                                </button>
+                                <button
+                                    onClick={() => setIsFollowingOpen(true)} // ✅ 팔로잉 모달 열기
+                                    className="text-center"
+                                >
                                     <div className="text-xl font-bold text-gray-900">
                                         {profile.stats.following}
                                     </div>
                                     <div className="text-sm text-gray-500">팔로우</div>
-                                </div>
+                                </button>
                             </div>
 
-                            {/* Bio */}
                             <div className="text-gray-700 whitespace-pre-line text-sm leading-relaxed">
                                 {profile.bio}
                             </div>
@@ -277,6 +289,33 @@ export const Profile: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* Followers / Following 모달 */}
+            <FollowersModal
+                isOpen={isFollowersOpen}
+                onClose={() => setIsFollowersOpen(false)}
+                title="팔로워"
+                users={followers.map((u) => ({
+                    userId: u.userId,
+                    username: u.username,
+                    profileImage: u.profileImage ?? "/default-avatar.png", // 기본 이미지 처리
+                    following: u.following, // ✅ 서버 응답 값 그대로 사용
+                }))}
+                onToggleFollow={() => {}}
+            />
+
+            <FollowersModal
+                isOpen={isFollowingOpen}
+                onClose={() => setIsFollowingOpen(false)}
+                title="팔로잉"
+                users={following.map((u) => ({
+                    userId: u.userId,
+                    username: u.username,
+                    profileImage: u.profileImage ?? "/default-avatar.png", // 기본 이미지 처리
+                    following: u.following, // ✅ 서버 응답 값 그대로 사용
+                }))}
+                onToggleFollow={() => {}}
+            />
 
             {/* Post Detail Modal */}
             <PostDetailModal

@@ -14,6 +14,10 @@ export interface UserLite {
     profileImage: string;
 }
 
+export interface UserWithFollowing extends UserLite {
+    following: boolean; // ✅ 팔로잉 여부 포함
+}
+
 export interface Profile {
     id: number;
     userId: string;
@@ -31,11 +35,11 @@ export interface Profile {
     savedPosts?: any[];
     taggedPosts?: any[];
 
-    followers: UserLite[];
-    following: UserLite[];
+    followers: UserWithFollowing[];
+    following: UserWithFollowing[];
 }
 
-// ✅ 공통 훅
+// ✅ 공통 프로필 조회 훅
 function useProfileFetcher(endpoint: string, subscribeUserId?: string) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(false);
@@ -102,4 +106,58 @@ export function useMyProfile() {
 // ✅ 특정 유저 프로필 조회
 export function useUserProfile(userId: string) {
     return useProfileFetcher(userId ? `/api/users/${userId}/profile` : "", userId);
+}
+
+// ✅ 특정 유저의 팔로워 목록 (팔로잉 여부 포함)
+export function useFollowers(userId: string | undefined) {
+    const [followers, setFollowers] = useState<UserWithFollowing[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!userId) return;
+        const fetchFollowers = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get<UserWithFollowing[]>(`/api/users/${userId}/followers`);
+                setFollowers(res.data); // ✅ following 필드 포함
+                setError(null);
+            } catch (err) {
+                console.error(err);
+                setError("Failed to fetch followers");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFollowers();
+    }, [userId]);
+
+    return { followers, loading, error, setFollowers };
+}
+
+// ✅ 특정 유저의 팔로잉 목록 (팔로잉 여부 포함)
+export function useFollowing(userId: string | undefined) {
+    const [following, setFollowing] = useState<UserWithFollowing[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!userId) return;
+        const fetchFollowing = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get<UserWithFollowing[]>(`/api/users/${userId}/following`);
+                setFollowing(res.data); // ✅ following 필드 포함
+                setError(null);
+            } catch (err) {
+                console.error(err);
+                setError("Failed to fetch following");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFollowing();
+    }, [userId]);
+
+    return { following, loading, error, setFollowing };
 }

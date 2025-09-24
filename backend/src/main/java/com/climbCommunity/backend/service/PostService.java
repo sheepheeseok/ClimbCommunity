@@ -197,7 +197,9 @@ public class PostService {
 
                     } else {
                         log.info("🖼️ 이미지 업로드 처리: {}", originalName);
-                        String key = s3Service.uploadFile(file, userId, mediaDir);
+                        String imageDir = "posts/" + postId + "/images";
+                        String key = s3Service.uploadFile(file, userId, imageDir);
+
                         PostImage postImage = PostImage.builder()
                                 .post(savedPost)
                                 .imageUrl(key)

@@ -65,21 +65,37 @@ public class FollowController {
     }
 
     @GetMapping("/{userId}/followers")
-    public ResponseEntity<List<UserResponseDto>> getFollowers(@PathVariable String userId) {
+    public ResponseEntity<List<UserResponseDto>> getFollowers(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String myUserId = principal.getUserId(); // 로그인한 사용자
         List<UserResponseDto> followers = followService.getFollowers(userId)
                 .stream()
-                .map(UserResponseDto::fromEntity)
+                .map(user -> UserResponseDto.fromEntity(
+                        user,
+                        followService.isFollowing(myUserId, user.getUserId()) // ✅ 팔로잉 여부 포함
+                ))
                 .toList();
-                return ResponseEntity.ok(followers);
+
+        return ResponseEntity.ok(followers);
     }
 
     @GetMapping("/{userId}/following")
-    public ResponseEntity<List<UserResponseDto>> getFollowing(@PathVariable String userId) {
+    public ResponseEntity<List<UserResponseDto>> getFollowing(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String myUserId = principal.getUserId(); // 로그인한 사용자
         List<UserResponseDto> following = followService.getFollowing(userId)
                 .stream()
-                .map(UserResponseDto::fromEntity)
+                .map(user -> UserResponseDto.fromEntity(
+                        user,
+                        followService.isFollowing(myUserId, user.getUserId()) // ✅ 팔로잉 여부 포함
+                ))
                 .toList();
-                return ResponseEntity.ok(following);
+
+        return ResponseEntity.ok(following);
     }
 
     @GetMapping("/{targetUserId}/is-following")
