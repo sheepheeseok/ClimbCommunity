@@ -5,7 +5,7 @@ import { WS_BROKER_URL } from "@/utils/config";
 import api from "@/lib/axios";
 import { useAuth } from "@/hooks/useAuth";
 
-interface ChatPreview {
+export interface ChatPreview {
     roomId: number;
     user: {
         id: string;

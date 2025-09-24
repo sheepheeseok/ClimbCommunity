@@ -5,14 +5,15 @@ import Login from "./pages/Login";
 import SignUp from "@/pages/SignUp";
 import FindAccount from "@/pages/FindAccount";
 import {Profile} from "@/pages/Profile";
-import { useAuth } from "@/hooks/useAuth";
 import {SettingsPage} from "@/pages/SettingPage";
 import {MessagesPage} from "@/pages/MessagesPage";
+import { ChatProvider } from "@/data/ChatContext";
 
 function App() {
 
     return (
         <BrowserRouter>
+            <ChatProvider>
             <Routes>
                 <Route path="/" element={<Layout><Home/></Layout>} />
                 <Route path="/login" element={<Login/>} />
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/messages/:roomId" element={<Layout><MessagesPage/></Layout>} />
                 <Route path="/chatPage" element={<Layout><MessagesPage/></Layout>}/>
             </Routes>
+            </ChatProvider>
         </BrowserRouter>
     );
 }

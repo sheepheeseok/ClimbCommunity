@@ -18,9 +18,9 @@ import { motion } from "framer-motion";
 import api from "@/lib/axios";
 import {PostDetailModal} from "@/modals/PostDetailModal";
 import { fetchPosts } from "@/services/postService";
+import { useChat } from "@/data/ChatContext";
 
-import { useChatList } from "@/hooks/useChatList"; // ✅ 추가
-import { useAuth } from "@/hooks/useAuth"; // ✅ 로그인 유저 가져오기
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Navbar() {
     const location = useLocation();
@@ -39,7 +39,6 @@ export default function Navbar() {
     const [posts, setPosts] = useState<any[]>([]);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
     const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
-    const [isMessagesOpen, setIsMessagesOpen] = useState(false);
 
     useEffect(() => {
         // 피드 게시물 캐시 (한 번만 불러옴)
@@ -65,9 +64,7 @@ export default function Navbar() {
         setHighlightCommentId(highlightCommentId ?? null);
     };
 
-    const { chatList } = useChatList(String(myUserId));
-    const hasUnreadMessages = chatList.some((c) => c.unreadCount > 0);
-
+    const { chatList, unreadRooms, markAsRead } = useChat();
 
     useEffect(() => {
         const checkUnread = async () => {
@@ -192,6 +189,7 @@ export default function Navbar() {
                                 </button>
                             );
                         }
+                            // ✅ 메시지 버튼
                             if (isMessages) {
                                 return (
                                     <Link
@@ -201,12 +199,20 @@ export default function Navbar() {
                                     >
                                         {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
                                         {!isAnySidebarOpen && <span>{label}</span>}
-                                        {hasUnreadMessages && (
-                                            <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full" />
+
+                                        {/* ✅ 안 읽은 채팅방 개수 표시 */}
+                                        {unreadRooms > 0 && (
+                                            <span
+                                                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center
+                     text-xs font-bold text-white bg-red-500 rounded-full opacity-90"
+                                            >
+          {unreadRooms}
+        </span>
                                         )}
                                     </Link>
                                 );
                             }
+
 
                             if (isProfile) {
                                 return (
