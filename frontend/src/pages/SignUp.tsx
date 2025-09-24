@@ -6,6 +6,7 @@ import { DaumPostcode } from "@/lib/DaumPostcode";
 export default function SignUp() {
     const {
         form,
+        setForm,
         errors,
         isCustomEmail,
         setIsCustomEmail,
@@ -147,44 +148,73 @@ export default function SignUp() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                             이메일
                         </label>
-                        <div className="flex items-center space-x-2">
-                            {/* local part */}
-                            <input
-                                type="text"
-                                name="emailLocal"
-                                value={form.emailLocal}
-                                onChange={handleChange}
-                                placeholder="이메일"
-                                className={`px-4 py-3 text-black border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none
-                                    ${isCustomEmail ? "flex-1" : "w-1/2"}
-                                `}
-                            />
 
-                            {/* @는 custom 아닐 때만 */}
-                            {!isCustomEmail && <span className="text-gray-500">@</span>}
+                        {!isCustomEmail ? (
+                            // 일반 모드
+                            <div className="flex items-center space-x-2">
+                                {/* local part */}
+                                <input
+                                    type="text"
+                                    name="emailLocal"
+                                    value={form.emailLocal}
+                                    onChange={handleChange}
+                                    placeholder="이메일 아이디"
+                                    className="w-1/2 px-4 py-3 text-black border border-gray-200 rounded-xl
+                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                />
 
-                            {/* select */}
-                            <select
-                                name="emailDomain"
-                                value={form.emailDomain}
-                                onChange={(e) => {
-                                    handleChange(e); // 기존 form 업데이트 로직
-                                    setIsCustomEmail(e.target.value === "custom"); // custom 선택 여부 반영
-                                }}
-                                className="w-1/2 px-4 py-3 text-black border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                            >
-                                {emailDomains.map((domain) => (
-                                    <option key={domain} value={domain}>
-                                        {domain}
-                                    </option>
-                                ))}
-                                <option value="custom">직접 입력</option>
-                            </select>
-                        </div>
+                                <span className="text-gray-500">@</span>
+
+                                {/* select */}
+                                <select
+                                    name="emailDomain"
+                                    value={form.emailDomain}
+                                    onChange={(e) => {
+                                        if (e.target.value === "custom") {
+                                            setIsCustomEmail(true);
+                                            setForm((prev) => ({ ...prev, customEmail: "" })); // 초기화
+                                        } else {
+                                            handleChange(e);
+                                        }
+                                    }}
+                                    className="w-1/2 px-4 py-3 text-black border border-gray-200 rounded-xl
+                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                >
+                                    {emailDomains.map((domain) => (
+                                        <option key={domain} value={domain}>
+                                            {domain}
+                                        </option>
+                                    ))}
+                                    <option value="custom">직접 입력</option>
+                                </select>
+                            </div>
+                        ) : (
+                            // 커스텀 모드
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="text"
+                                    name="customEmail"
+                                    value={form.customEmail}
+                                    onChange={handleChange}
+                                    placeholder="이메일 전체 주소 입력"
+                                    className="w-full px-4 py-3 text-black border border-gray-200 rounded-xl
+                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCustomEmail(false)} // 다시 일반 모드로
+                                    className="px-2 text-nowrap py-3.5 bg-gray-200 text-sm rounded-lg hover:bg-gray-300"
+                                >
+                                    취소
+                                </button>
+                            </div>
+                        )}
+
                         {errors.email && (
                             <p className="text-red-500 text-xs mt-1">{errors.email}</p>
                         )}
                     </div>
+
 
                     {/* 전화번호 */}
                     <div>

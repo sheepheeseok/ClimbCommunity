@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, {useEffect, useState} from "react";
 import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
 import { useMyProfile, useUserProfile } from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useAuth} from "@/hooks/useAuth";
+import { followService } from "@/services/followService";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -27,6 +28,32 @@ export const Profile: React.FC = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
+
+    const [isFollowing, setIsFollowing] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (userId && myUserId && profile?.userId) {
+            followService.isFollowing(profile.userId.toString())
+                .then(setIsFollowing)
+                .catch((err) => console.error("팔로우 상태 확인 실패:", err));
+        }
+    }, [userId, myUserId, profile]);
+
+    const handleFollowToggle = async () => {
+        if (!profile) return;
+
+        try {
+            if (isFollowing) {
+                await followService.unfollow(profile.userId.toString());
+                setIsFollowing(false);
+            } else {
+                await followService.follow(profile.userId.toString());
+                setIsFollowing(true);
+            }
+        } catch (err) {
+            console.error("팔로우/언팔로우 실패:", err);
+        }
+    };
 
     const tabs: Tab[] = [
         { id: "posts", label: "Posts", icon: Grid3x3 },
@@ -144,6 +171,16 @@ export const Profile: React.FC = () => {
                                 ) : (
                                     <div className="flex items-center justify-center md:justify-start gap-3">
                                         <button
+                                            onClick={handleFollowToggle}
+                                            className={`px-6 py-2 rounded-xl font-medium transition-colors ${
+                                                isFollowing
+                                                    ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                            }`}
+                                        >
+                                            {isFollowing ? "팔로잉" : "팔로우"}
+                                        </button>
+                                        <button
                                             onClick={handleStartChat}
                                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
                                         >
@@ -157,12 +194,12 @@ export const Profile: React.FC = () => {
                             <div className="flex justify-center md:justify-start gap-8 mb-6">
                                 <div className="text-center">
                                     <div className="text-xl font-bold text-gray-900">
-                                    {profile.stats.posts}
+                                        {profile.stats.posts}
                                     </div>
                                     <div className="text-sm text-gray-500">게시물</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-xl font-bold text-gray-900">
+                                <div className="text-xl font-bold text-gray-900">
                                         {profile.stats.followers}
                                     </div>
                                     <div className="text-sm text-gray-500">팔로워</div>
