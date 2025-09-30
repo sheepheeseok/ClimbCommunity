@@ -14,6 +14,14 @@ export function MessagesPage() {
     const [activeChat, setActiveChat] = useState<ChatPreview | null>(null);
     const navigate = useNavigate();
 
+    // ✅ body 스크롤 막기
+    useEffect(() => {
+        document.body.classList.add("no-scroll");
+        return () => {
+            document.body.classList.remove("no-scroll");
+        };
+    }, []);
+
     useEffect(() => {
         if (!roomId) {
             setActiveChat(null);
@@ -35,7 +43,7 @@ export function MessagesPage() {
     }, [roomId]);
 
     return (
-        <div className="flex h-screen w-full overflow-hidden"> {/* ✅ 전체 고정, 내부만 스크롤 */}
+        <div className="flex h-screen"> {/* ✅ 전체 고정, 내부만 스크롤 */}
 
             {/* ✅ ChatList: 좌측 고정, 내부 스크롤 */}
             <div
@@ -50,13 +58,12 @@ export function MessagesPage() {
                         if (!chat?.roomId) return;
                         setActiveChat(chat);
                         navigate(`/messages/${chat.roomId}`);
-                        markAsRead(chat.roomId);
                     }}
                 />
             </div>
 
             {/* ✅ ChatWindow: 내부 스크롤 */}
-            <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+            <div className="flex-1 flex flex-col">
                 {activeChat ? (
                     <ChatWindow
                         activeChat={activeChat}

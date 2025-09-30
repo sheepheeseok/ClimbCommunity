@@ -30,12 +30,26 @@ public class PostResponseDto {
     private Map<String, Integer> completedProblems;
     private long commentCount;
     private long likeCount;
+    private boolean savedByMe; // ✅ 북마크 여부
 
+    /**
+     * savedByMe 없는 기본 변환
+     */
     public static PostResponseDto fromEntity(Post post) {
-        return fromEntity(post, 0L, 0L);
+        return fromEntity(post, 0L, 0L, false);
     }
 
+    /**
+     * 댓글수/좋아요수만 포함
+     */
     public static PostResponseDto fromEntity(Post post, long commentCount, long likeCount) {
+        return fromEntity(post, commentCount, likeCount, false);
+    }
+
+    /**
+     * 댓글수/좋아요수 + 저장여부 포함
+     */
+    public static PostResponseDto fromEntity(Post post, long commentCount, long likeCount, boolean savedByMe) {
         List<MediaDto> mediaList = new ArrayList<>();
 
         // 이미지 매핑
@@ -60,6 +74,7 @@ public class PostResponseDto {
                         ).toList()
         );
 
+        // 정렬 (orderIndex 기준)
         mediaList.sort(Comparator.comparingInt(MediaDto::getOrderIndex));
 
         return PostResponseDto.builder()
@@ -72,12 +87,13 @@ public class PostResponseDto {
                 .profileImage(post.getUser().getProfileImage())
                 .createdAt(format(post.getCreatedAt()))
                 .updatedAt(post.getUpdatedAt() != null ? format(post.getUpdatedAt()) : null)
-                .mediaList(mediaList)  // ✅ 통합된 mediaList
+                .mediaList(mediaList)
                 .thumbnailUrl(post.getThumbnailUrl())
                 .location(post.getLocation())
                 .completedProblems(post.getCompletedProblems())
                 .commentCount(commentCount)
                 .likeCount(likeCount)
+                .savedByMe(savedByMe) // ✅ 북마크 여부 반영
                 .build();
     }
 

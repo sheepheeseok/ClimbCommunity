@@ -38,7 +38,7 @@ public class CommentController {
         return ResponseEntity.ok(response);
     }
 
-    // 댓글 목록 조회 (좋아요 상태, 개수 포함)
+    // 댓글 목록 조회 (트리 구조)
     @GetMapping
     public ResponseEntity<Page<CommentResponseDto>> getComments(
             @PathVariable Long postId,
@@ -90,48 +90,5 @@ public class CommentController {
 
         commentService.reportComment(commentId, userPrincipal.getId(), dto.getReason());
         return ResponseEntity.ok().build();
-    }
-
-    // 댓글 좋아요 토글
-    @PostMapping("/{commentId}/like")
-    public ResponseEntity<String> toggleLikeComment(
-            @PathVariable Long postId,
-            @PathVariable Long commentId,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
-
-        Long userId = userPrincipal.getId();
-
-        boolean alreadyLiked = commentService.hasUserLiked(commentId, userId, LikeType.LIKE);
-
-        if (alreadyLiked) {
-            commentService.removeLike(commentId, userId, LikeType.LIKE);
-            return ResponseEntity.ok("좋아요 취소");
-        } else {
-            commentService.addLike(commentId, userId, LikeType.LIKE);
-
-            Post post = postService.getPostById(postId);
-            if (!post.getUser().getId().equals(userId)) {
-                notificationService.createNotification(
-                        post.getUser().getId(),
-                        userId,
-                        NotificationType.LIKE,
-                        TargetType.POST,
-                        postId,
-                        "님이 게시글을 좋아했습니다."
-                );
-            }
-            return ResponseEntity.ok("좋아요 추가");
-        }
-    }
-
-    // 댓글 좋아요 여부 확인
-    @GetMapping("/{commentId}/like/check")
-    public ResponseEntity<Boolean> hasLikedComment(
-            @PathVariable Long postId,
-            @PathVariable Long commentId,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
-
-        boolean liked = commentService.hasUserLiked(commentId, userPrincipal.getId(), LikeType.LIKE);
-        return ResponseEntity.ok(liked);
     }
 }

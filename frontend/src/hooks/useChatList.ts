@@ -16,6 +16,7 @@ export interface ChatPreview {
     lastMessage: string;
     unreadCount: number;
     online: boolean;
+    timestamp?: string; // ✅ 마지막 메시지 시간
 }
 
 // ✅ 메시지 변환 함수
@@ -42,7 +43,16 @@ export function useChatList(myUserId: string) {
             const mapped = res.data.map((chat: any) => ({
                 ...chat,
                 lastMessage: formatLastMessage(chat.type, chat.lastMessage),
+                timestamp: chat.timestamp || new Date().toISOString(),
             }));
+
+            // 최신순 정렬
+            mapped.sort(
+                (a: any, b: any) =>
+                    new Date(b.timestamp).getTime() -
+                    new Date(a.timestamp).getTime()
+            );
+
             setChatList(mapped);
         });
     }, [id]);
@@ -68,8 +78,8 @@ export function useChatList(myUserId: string) {
 
                     if (msg.type === "TYPING") return;
 
-                    setChatList((prev) =>
-                        prev.map((chat) =>
+                    setChatList((prev) => {
+                        const updated = prev.map((chat) =>
                             chat.roomId === msg.roomId
                                 ? {
                                     ...chat,
@@ -81,16 +91,30 @@ export function useChatList(myUserId: string) {
                                         msg.senderId === id
                                             ? chat.unreadCount
                                             : chat.unreadCount + 1,
+                                    timestamp:
+                                        msg.createdAt ||
+                                        new Date().toISOString(),
                                 }
                                 : chat
-                        )
-                    );
+                        );
+
+                        // ✅ 최신 메시지 순서대로 정렬
+                        return [...updated].sort(
+                            (a, b) =>
+                                new Date(b.timestamp || 0).getTime() -
+                                new Date(a.timestamp || 0).getTime()
+                        );
+                    });
                 });
             });
         };
 
         client.onStompError = (frame) => {
-            console.error("❌ STOMP error:", frame.headers["message"], frame.body);
+            console.error(
+                "❌ STOMP error:",
+                frame.headers["message"],
+                frame.body
+            );
         };
 
         client.activate();
@@ -119,7 +143,8 @@ export function useChatList(myUserId: string) {
         }
     };
 
+
     const unreadRooms = chatList.filter((c) => c.unreadCount > 0).length;
 
-    return { chatList, markAsRead, unreadRooms }; // ✅ 함께 반환
+    return { chatList, markAsRead, unreadRooms };
 }

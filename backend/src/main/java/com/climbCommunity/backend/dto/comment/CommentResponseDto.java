@@ -11,6 +11,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -44,6 +45,14 @@ public class CommentResponseDto {
             dislikedByMe = likeRepo.existsByUser_IdAndComment_IdAndType(currentUserId, comment.getId(), LikeType.DISLIKE);
         }
 
+        // 🔁 재귀적으로 자식 댓글까지 DTO로 변환
+        List<CommentResponseDto> replyDtos = comment.getReplies() != null
+                ? comment.getReplies().stream()
+                .filter(c -> c.getStatus() == CommentStatus.ACTIVE) // 삭제 제외
+                .map(child -> CommentResponseDto.from(child, likeRepo, currentUserId))
+                .collect(Collectors.toList())
+                : List.of();
+
         return CommentResponseDto.builder()
                 .id(comment.getId())
                 .userPkId(comment.getUser().getId())          // 🔹 PK
@@ -59,7 +68,7 @@ public class CommentResponseDto {
                         : comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
-                .replies(new ArrayList<>())
+                .replies(replyDtos) // 🔁 트리 구조 세팅
                 .build();
     }
 }

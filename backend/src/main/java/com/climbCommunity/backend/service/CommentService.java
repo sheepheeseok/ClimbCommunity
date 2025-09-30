@@ -107,27 +107,16 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
-    // 댓글 트리 조회
+    // 댓글 트리 조회 (재귀)
     public Page<CommentResponseDto> getCommentTreeByPostId(Long postId, int page, int size, Long currentUserId) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
+        Page<Comment> parents = commentRepository.findByPost_IdAndStatusAndParentCommentIsNull(
+                postId, CommentStatus.ACTIVE, pageable
+        );
 
-        Page<Comment> parentComments = commentRepository.findByPost_IdAndStatusAndParentCommentIsNull(
-                postId, CommentStatus.ACTIVE, pageable);
-
-        return parentComments.map(comment -> {
-            CommentResponseDto dto = CommentResponseDto.from(comment, commentLikeRepository, currentUserId);
-
-            List<Comment> replies = commentRepository.findByParentComment_IdAndStatus(
-                    comment.getId(), CommentStatus.ACTIVE);
-
-            List<CommentResponseDto> replyDtos = replies.stream()
-                    .map(reply -> CommentResponseDto.from(reply, commentLikeRepository, currentUserId))
-                    .toList();
-
-            dto.setReplies(replyDtos);
-            return dto;
-        });
+        return parents.map(c -> CommentResponseDto.from(c, commentLikeRepository, currentUserId));
     }
+
 
     // 댓글 신고
     public void reportComment(Long commentId, Long userId, String reason) {

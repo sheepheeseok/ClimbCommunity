@@ -1,32 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/*
-  다크모드
-*/
+
+/* 다크모드 */
 @custom-variant dark (&:is(.dark *));
 
-body {
-  @apply font-sans;
-}
-/*
-  Root Theme Variables
-*/
-
-:root {
+/* ===== 전역 리셋 ===== */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
   padding: 0;
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+html.no-scroll,
+body.no-scroll {
+  overflow: hidden !important;
+  height: 100%;
+}
+
+body {
+  @apply font-sans bg-background text-foreground;
+  min-width: 320px;
+  font-size: 1rem;
   line-height: 1.5;
-  font-weight: 400;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+/* ===== Root Theme Variables ===== */
+:root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -61,9 +65,7 @@ body {
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/*
-   Dark Mode Override
-*/
+/* ===== Dark Mode Override ===== */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -98,9 +100,7 @@ body {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/*
-   Theme Aliases for Tailwind
-*/
+/* ===== Theme Aliases for Tailwind ===== */
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -139,34 +139,17 @@ body {
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-  /* 모바일에서만 헤더(상단 56px) + 네비(하단 56px) 만큼 여백 */
-  @media (max-width: 768px) {
-    body {
-      margin-top: 66px;
-      /* Header 높이 */
-      margin-bottom: 56px;
-      /* Navbar 높이 */
-    }
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    margin: 0;
-    min-width: 320px;
-    min-height: 100vh;
-    font-size: 1rem;
-  }
-
+/* ===== 기타 ===== */
 button {
   @apply cursor-pointer;
 }
 
-  a {
-    @apply font-medium text-blue-600 hover:text-blue-500;
-    text-decoration: none;
-  }
+a {
+  @apply font-medium text-blue-600 hover:text-blue-500;
+  text-decoration: none;
+}
 
-  h1 {
-    font-size: 3.2em;
-    line-height: 1.1;
-  }
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
