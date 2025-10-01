@@ -27,4 +27,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             TargetType targetType,
             Long targetId
     );
+
+    boolean existsByUser_IdAndActor_IdAndTypeAndTargetTypeAndTargetId(
+            Long userId,
+            Long actorId,
+            NotificationType type,
+            TargetType targetType,
+            Long targetId
+    );
 }

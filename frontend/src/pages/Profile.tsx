@@ -1,13 +1,13 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import { Grid3x3, Bookmark, UserCheck, Settings, Award } from "lucide-react";
-import {useFollowers, useFollowing, useMyProfile, useUserProfile} from "@/hooks/ProfileHook";
+import { useFollowers, useFollowing, useMyProfile, useUserProfile } from "@/hooks/ProfileHook";
 import { PostDetailModal } from "@/modals/PostDetailModal";
 import api from "@/lib/axios";
-import {Link, useNavigate, useParams} from "react-router-dom";
-import {useAuth} from "@/hooks/useAuth";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { followService } from "@/services/followService";
 import { FollowersModal } from "@/modals/FollowersModal";
-
+import { useSavedPosts } from "@/hooks/ProfileHook";
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -16,46 +16,50 @@ interface Tab {
 }
 
 export const Profile: React.FC = () => {
-    const { userId } = useParams<{ userId?: string }>(); // ✅ URL 파라미터에서 userId 가져옴
+    const { userId } = useParams<{ userId?: string }>();
     const [activeTab, setActiveTab] = useState<Tab["id"]>("posts");
     const { id: myUserId } = useAuth();
     const navigate = useNavigate();
+    const S3_BASE_URL = "https://pj-climb-bucket.s3.ap-northeast-3.amazonaws.com/";
+    const { savedPosts, loading: savedLoading } = useSavedPosts();
 
-    // ✅ userId 있으면 useUserProfile, 없으면 useMyProfile
-    const {
-        profile,
-        loading,
-        error
-    } = userId ? useUserProfile(userId) : useMyProfile();
-
+    const { profile, loading, error } = userId ? useUserProfile(userId) : useMyProfile();
     const { followers } = useFollowers(profile?.userId);
     const { following } = useFollowing(profile?.userId);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
-    const [isFollowing, setIsFollowing] = useState<boolean>(false);
+    // ✅ 팔로우 상태: NONE | PENDING | ACCEPTED
+    const [followStatus, setFollowStatus] = useState<"NONE" | "PENDING" | "ACCEPTED">("NONE");
+
     const [isFollowersOpen, setIsFollowersOpen] = useState(false);
     const [isFollowingOpen, setIsFollowingOpen] = useState(false);
 
+    // ✅ 팔로우 상태 확인
     useEffect(() => {
-        if (userId && myUserId && profile?.userId) {
-            followService.isFollowing(profile.userId.toString())
-                .then(setIsFollowing)
+        if (userId && profile?.userId) {
+            followService.getFollowStatus(profile.userId.toString())
+                .then(setFollowStatus)
                 .catch((err) => console.error("팔로우 상태 확인 실패:", err));
         }
-    }, [userId, myUserId, profile]);
+    }, [userId, profile]);
 
     const handleFollowToggle = async () => {
         if (!profile) return;
-
         try {
-            if (isFollowing) {
+            if (followStatus === "ACCEPTED") {
+                // ✅ 팔로잉 해제
                 await followService.unfollow(profile.userId.toString());
-                setIsFollowing(false);
-            } else {
+                setFollowStatus("NONE");
+            } else if (followStatus === "PENDING") {
+                // ✅ 요청 취소 (언팔 + 알림 삭제)
+                await followService.cancelRequest(profile.userId.toString());
+                setFollowStatus("NONE");
+            } else if (followStatus === "NONE") {
+                // ✅ 팔로우 요청
                 await followService.follow(profile.userId.toString());
-                setIsFollowing(true);
+                setFollowStatus("PENDING");
             }
         } catch (err) {
             console.error("팔로우/언팔로우 실패:", err);
@@ -75,7 +79,7 @@ export const Profile: React.FC = () => {
     const getCurrentPosts = () => {
         switch (activeTab) {
             case "saved":
-                return profile.savedPosts?.length ? profile.savedPosts : [];
+                return savedPosts;
             case "tagged":
                 return profile.taggedPosts?.length ? profile.taggedPosts : [];
             default:
@@ -95,22 +99,17 @@ export const Profile: React.FC = () => {
 
     const handleStartChat = async () => {
         if (!userId || !myUserId) return;
-
         try {
-            // 1. 먼저 내 채팅방 목록 조회
             const resList = await api.get(`/api/chats/${myUserId}`);
             const existingRoom = resList.data.find(
-                (room: any) =>
-                    room.partnerId === profile.id || room.userId === profile.id
+                (room: any) => room.partnerId === profile.id || room.userId === profile.id
             );
 
             if (existingRoom) {
-                // ✅ 이미 방이 있으면 바로 이동
                 navigate(`/messages/${existingRoom.roomId}`);
                 return;
             }
 
-            // 2. 없으면 새 방 생성
             const res = await api.post(
                 `/api/chats/room?userId1=${myUserId}&userId2=${profile.id}`
             );
@@ -124,7 +123,6 @@ export const Profile: React.FC = () => {
                 alert("채팅방 생성 실패: roomId 없음");
                 return;
             }
-
             navigate(`/messages/${roomId}`);
         } catch (err) {
             console.error("❌ 채팅방 생성 실패:", err);
@@ -162,12 +160,13 @@ export const Profile: React.FC = () => {
                                         <Award className="w-4 h-4 text-white" />
                                     </div>
                                 </div>
-                                {/* ⚡ 자기 프로필일 때만 편집 버튼 보이게 */}
+
+                                {/* 내 프로필일 때만 편집 버튼 */}
                                 {!userId ? (
-                                    <div className="flex items-center justify-center md:justify-start gap-3">
+                                    <div className="flex items-center gap-3">
                                         <Link
                                             to="/profile/settingPage"
-                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors"
                                         >
                                             프로필 편집
                                         </Link>
@@ -176,20 +175,35 @@ export const Profile: React.FC = () => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-center md:justify-start gap-3">
-                                        <button
-                                            onClick={handleFollowToggle}
-                                            className={`px-6 py-2 rounded-xl font-medium transition-colors ${
-                                                isFollowing
-                                                    ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                                    : "bg-blue-600 text-white hover:bg-blue-700"
-                                            }`}
-                                        >
-                                            {isFollowing ? "팔로잉" : "팔로우"}
-                                        </button>
+                                    <div className="flex items-center gap-3">
+                                        {/* ✅ followStatus에 따라 버튼 표시 */}
+                                        {followStatus === "PENDING" ? (
+                                            // 🔹 요청 보낸 상태 → 취소 가능
+                                            <button
+                                                onClick={handleFollowToggle}
+                                                className="px-6 py-2 rounded-xl font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                            >
+                                                요청 중
+                                            </button>
+                                        ) : followStatus === "ACCEPTED" ? (
+                                            <button
+                                                onClick={handleFollowToggle}
+                                                className="px-6 py-2 rounded-xl font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                            >
+                                                팔로잉
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleFollowToggle}
+                                                className="px-6 py-2 rounded-xl font-medium bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                팔로우
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={handleStartChat}
-                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors inline-block text-center"
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2 rounded-xl transition-colors"
                                         >
                                             메시지 보내기
                                         </button>
@@ -200,27 +214,15 @@ export const Profile: React.FC = () => {
                             {/* Stats */}
                             <div className="flex justify-center md:justify-start gap-8 mb-6">
                                 <div className="text-center">
-                                    <div className="text-xl font-bold text-gray-900">
-                                        {profile.stats.posts}
-                                    </div>
+                                    <div className="text-xl font-bold text-gray-900">{profile.stats.posts}</div>
                                     <div className="text-sm text-gray-500">게시물</div>
                                 </div>
-                                <button
-                                    onClick={() => setIsFollowersOpen(true)} // ✅ 팔로워 모달 열기
-                                    className="text-center"
-                                >
-                                    <div className="text-xl font-bold text-gray-900">
-                                        {profile.stats.followers}
-                                    </div>
+                                <button onClick={() => setIsFollowersOpen(true)} className="text-center">
+                                    <div className="text-xl font-bold text-gray-900">{profile.stats.followers}</div>
                                     <div className="text-sm text-gray-500">팔로워</div>
                                 </button>
-                                <button
-                                    onClick={() => setIsFollowingOpen(true)} // ✅ 팔로잉 모달 열기
-                                    className="text-center"
-                                >
-                                    <div className="text-xl font-bold text-gray-900">
-                                        {profile.stats.following}
-                                    </div>
+                                <button onClick={() => setIsFollowingOpen(true)} className="text-center">
+                                    <div className="text-xl font-bold text-gray-900">{profile.stats.following}</div>
                                     <div className="text-sm text-gray-500">팔로우</div>
                                 </button>
                             </div>
@@ -259,7 +261,17 @@ export const Profile: React.FC = () => {
 
                 {/* Posts Grid */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    {getCurrentPosts().length > 0 ? (
+                    {/* ✅ 비공개 계정 처리 */}
+                    {profile.isPrivate && followStatus !== "ACCEPTED" && userId ? (
+                        <div className="text-center py-16">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                🔒 비공개 된 계정입니다.
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                팔로우가 승인된 사용자만 게시물을 볼 수 있습니다.
+                            </p>
+                        </div>
+                    ) : getCurrentPosts().length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {getCurrentPosts().map((post: any) => (
                                 <div
@@ -268,7 +280,9 @@ export const Profile: React.FC = () => {
                                     onClick={() => handleClickPost(post.id)}
                                 >
                                     <img
-                                        src={post.thumbnailUrl}
+                                        src={post.thumbnailUrl.startsWith("http")
+                                            ? post.thumbnailUrl
+                                            : S3_BASE_URL + post.thumbnailUrl}
                                         alt={`Post ${post.id}`}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
@@ -282,9 +296,7 @@ export const Profile: React.FC = () => {
                                 {activeTab === "saved" && <Bookmark className="w-8 h-8 text-gray-400" />}
                                 {activeTab === "tagged" && <UserCheck className="w-8 h-8 text-gray-400" />}
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                게시물이 없습니다.
-                            </h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">게시물이 없습니다.</h3>
                         </div>
                     )}
                 </div>
@@ -298,8 +310,8 @@ export const Profile: React.FC = () => {
                 users={followers.map((u) => ({
                     userId: u.userId,
                     username: u.username,
-                    profileImage: u.profileImage ?? "/default-avatar.png", // 기본 이미지 처리
-                    following: u.following, // ✅ 서버 응답 값 그대로 사용
+                    profileImage: u.profileImage ?? "/default-avatar.png",
+                    following: u.following,
                 }))}
                 onToggleFollow={() => {}}
             />
@@ -311,18 +323,14 @@ export const Profile: React.FC = () => {
                 users={following.map((u) => ({
                     userId: u.userId,
                     username: u.username,
-                    profileImage: u.profileImage ?? "/default-avatar.png", // 기본 이미지 처리
-                    following: u.following, // ✅ 서버 응답 값 그대로 사용
+                    profileImage: u.profileImage ?? "/default-avatar.png",
+                    following: u.following,
                 }))}
                 onToggleFollow={() => {}}
             />
 
             {/* Post Detail Modal */}
-            <PostDetailModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                post={selectedPost}
-            />
+            <PostDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} post={selectedPost} />
         </div>
     );
 };

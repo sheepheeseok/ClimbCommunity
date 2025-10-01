@@ -1,5 +1,6 @@
 package com.climbCommunity.backend.entity;
 
+import com.climbCommunity.backend.entity.enums.FollowStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,8 +29,14 @@ public class Follow {
 
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
+    private FollowStatus status; // PENDING, ACCEPTED, REJECTED
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (status == null) {
+            status = FollowStatus.PENDING;
+        }
     }
 }

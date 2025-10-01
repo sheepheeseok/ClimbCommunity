@@ -50,6 +50,19 @@ interface PostDetailModalProps {
     highlightCommentId?: number | null;
 }
 
+// ✅ Follow 상태 타입 & 정규화 함수
+type FollowStatus = "NONE" | "PENDING" | "ACCEPTED";
+function normalizeFollowStatus(status: string): FollowStatus {
+    switch (status) {
+        case "PENDING":
+            return "PENDING";
+        case "ACCEPTED":
+            return "ACCEPTED";
+        default: // NONE, REJECTED, UNFOLLOW
+            return "NONE";
+    }
+}
+
 export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                                                     isOpen,
                                                                     onClose,
@@ -71,7 +84,9 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
     const [newComment, setNewComment] = useState("");
     const [replyTo, setReplyTo] = useState<Comment | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [isFollowing, setIsFollowing] = useState(false);
+
+    // ✅ 팔로우 상태 ("NONE" | "PENDING" | "ACCEPTED")
+    const [followStatus, setFollowStatus] = useState<FollowStatus>("NONE");
 
     const [showOptions, setShowOptions] = useState(false);
 
@@ -83,15 +98,14 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         userId: post.userId,
         onFollowEvent: (event: FollowEvent) => {
             if (event.followerId === currentUserId) {
-                setIsFollowing(event.following);
+                setFollowStatus(normalizeFollowStatus(event.status));
             }
         },
     });
 
-// ✅ 모달 열림/닫힘 시 초기화
+    // ✅ 모달 열림/닫힘 시 초기화
     useEffect(() => {
         if (isOpen) {
-            // 현재 스크롤 위치 저장
             const scrollY = window.scrollY;
             document.body.style.position = "fixed";
             document.body.style.top = `-${scrollY}px`;
@@ -102,19 +116,17 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
 
             if (post) {
                 setLikeCount(post.likeCount ?? 0);
-                // 좋아요 여부 확인
                 LikeService.hasUserLiked(post.id).then(setLikeActive);
                 LikeService.getLikeCount(post.id).then(setLikeCount);
-                // 팔로우 여부 확인
+
                 if (post.userId !== currentUserId) {
                     followService
-                        .isFollowing(post.userId)
-                        .then((res) => setIsFollowing(res))
-                        .catch(() => setIsFollowing(false));
+                        .getFollowStatus(post.userId)
+                        .then((status) => setFollowStatus(normalizeFollowStatus(status)))
+                        .catch(() => setFollowStatus("NONE"));
                 }
             }
         } else {
-            // 닫힐 때 body 스타일 원상복구 + 스크롤 위치 복원
             const top = document.body.style.top;
             document.body.style.position = "";
             document.body.style.top = "";
@@ -131,7 +143,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
             setNewComment("");
         }
 
-        // cleanup (컴포넌트 언마운트 시에도 원상복구)
         return () => {
             const top = document.body.style.top;
             document.body.style.position = "";
@@ -146,7 +157,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
             videoRefs.current = [];
         };
     }, [isOpen, post, currentUserId]);
-
 
     // ✅ 영상 자동재생 제어
     useEffect(() => {
@@ -199,22 +209,30 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
 
     // ✅ 팔로우/언팔로우
     const handleFollow = async () => {
-        setIsFollowing(true);
         try {
             await followService.follow(post.userId);
+            const status = await followService.getFollowStatus(post.userId);
+            setFollowStatus(normalizeFollowStatus(status));
         } catch (e) {
-            console.error(e);
-            setIsFollowing(false);
+            console.error("팔로우 실패:", e);
         }
     };
 
     const handleUnfollow = async () => {
-        setIsFollowing(false);
         try {
             await followService.unfollow(post.userId);
+            setFollowStatus("NONE");
         } catch (e) {
-            console.error(e);
-            setIsFollowing(true);
+            console.error("언팔로우 실패:", e);
+        }
+    };
+
+    const handleCancelRequest = async () => {
+        try {
+            await followService.cancelRequest(post.userId);
+            setFollowStatus("NONE");
+        } catch (e) {
+            console.error("팔로우 요청 취소 실패:", e);
         }
     };
 
@@ -369,12 +387,19 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                         </h3>
                                         {currentUserId &&
                                             post.userId !== currentUserId &&
-                                            (isFollowing ? (
+                                            (followStatus === "ACCEPTED" ? (
                                                 <button
                                                     onClick={handleUnfollow}
                                                     className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
                                                 >
                                                     팔로잉
+                                                </button>
+                                            ) : followStatus === "PENDING" ? (
+                                                <button
+                                                    onClick={handleCancelRequest}
+                                                    className="text-xs px-2 py-1 rounded bg-gray-300 text-gray-600 hover:bg-gray-400"
+                                                >
+                                                    요청중
                                                 </button>
                                             ) : (
                                                 <button

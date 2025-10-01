@@ -3,6 +3,7 @@ package com.climbCommunity.backend.service;
 import com.climbCommunity.backend.dto.user.ProfileResponseDto;
 import com.climbCommunity.backend.dto.user.UserLiteDto;
 import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.entity.enums.FollowStatus;
 import com.climbCommunity.backend.repository.FollowRepository;
 import com.climbCommunity.backend.repository.PostRepository;
 import com.climbCommunity.backend.repository.UserRepository;
@@ -37,14 +38,14 @@ public class ProfileService {
                         .build())
                 .toList();
 
-        // 팔로워
-        List<UserLiteDto> followers = followRepository.findByFollowee(user).stream()
-                .map(f -> UserLiteDto.fromEntity(f.getFollower()))
+        // ✅ 승인된 팔로워만
+        List<UserLiteDto> followers = followRepository.findByFolloweeAndStatus(user, FollowStatus.ACCEPTED).stream()
+                .map(f -> UserLiteDto.fromEntity(f.getFollower(), f.getStatus()))
                 .toList();
 
-        // 팔로잉
-        List<UserLiteDto> following = followRepository.findByFollower(user).stream()
-                .map(f -> UserLiteDto.fromEntity(f.getFollowee()))
+        // ✅ 승인된 팔로잉만
+        List<UserLiteDto> following = followRepository.findByFollowerAndStatus(user, FollowStatus.ACCEPTED).stream()
+                .map(f -> UserLiteDto.fromEntity(f.getFollowee(), f.getStatus()))
                 .toList();
 
         return ProfileResponseDto.builder()
@@ -62,6 +63,7 @@ public class ProfileService {
                 .posts(posts)
                 .followers(followers)
                 .following(following)
+                .isPrivate(user.isPrivate())
                 .build();
     }
 }

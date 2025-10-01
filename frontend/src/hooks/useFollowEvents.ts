@@ -1,11 +1,10 @@
-// src/hooks/useFollowEvents.ts
 import { useEffect, useRef } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
-import {WS_BROKER_URL} from "@/utils/config";
+import { WS_BROKER_URL } from "@/utils/config";
 
 export type FollowEvent = {
     followerId: string;
-    following: boolean; // true = follow, false = unfollow
+    status: "PENDING" | "ACCEPTED" | "REJECTED" | "UNFOLLOW";
 };
 
 type Props = {

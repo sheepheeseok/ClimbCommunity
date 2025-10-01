@@ -17,10 +17,7 @@ export const NotificationSidebar: React.FC<{
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
 
-            // ✅ Sidebar 내부 클릭 → 무시
             if (sidebarRef.current?.contains(target)) return;
-
-            // ✅ Navbar 내부 클릭 → 무시
             if (navbarRef.current?.contains(target)) return;
 
             onClose();
@@ -38,8 +35,13 @@ export const NotificationSidebar: React.FC<{
         if (n.type === "LIKE") {
             openPostDetailModal({ postId: n.targetId });
         } else if (n.type === "COMMENT") {
-            openPostDetailModal({ postId: n.postId, highlightCommentId: n.targetId});
+            openPostDetailModal({ postId: n.postId, highlightCommentId: n.targetId });
         }
+    };
+
+    // ✅ 알림 제거 핸들러 (승인/거절 시 호출됨)
+    const handleRemoveNotification = (id: string) => {
+        setNotifications((prev) => prev.filter((n) => String(n.id) !== id));
     };
 
     return (
@@ -66,7 +68,7 @@ export const NotificationSidebar: React.FC<{
                                 key={n.id}
                                 notification={{
                                     id: String(n.id),
-                                    username: n.actorUsername || "", // actorUsername 내려받을 수 있으면 사용
+                                    username: n.actorUsername || "",
                                     actorUserId: n.actorUserId,
                                     action: n.message,
                                     preview: n.preview,
@@ -78,6 +80,7 @@ export const NotificationSidebar: React.FC<{
                                     postId: n.postId,
                                 }}
                                 onClick={handleNotificationClick}
+                                onRemove={handleRemoveNotification} // ✅ 승인/거절 후 알림 제거
                             />
                         ))}
                     </div>

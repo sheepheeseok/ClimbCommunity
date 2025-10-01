@@ -55,6 +55,8 @@ public class User {
     @Column(nullable = true)
     private LocalDate birthdate;
 
+    private boolean isPrivate;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Role role;
@@ -74,5 +76,6 @@ public class User {
         this.grade = Grade.White;
         this.status = Status.active;
         this.createdAt = LocalDateTime.now();
+        this.isPrivate = false;
     }
 }

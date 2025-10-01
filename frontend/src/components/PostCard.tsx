@@ -9,11 +9,11 @@ import { SaveIcon, SaveIconFilled } from "@/components/icons/SaveIcon";
 import { CompletedProblemsCount } from "@/components/CompletedProblemsCount";
 import { followService } from "@/services/followService";
 import { useAuth } from "@/hooks/useAuth";
-import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
 import { LikeService } from "@/services/LikeService";
-import {PostOptionsModal} from "@/modals/PostOptionsModal";
+import { PostOptionsModal } from "@/modals/PostOptionsModal";
 import api from "@/lib/axios";
 import { useProfileNavigation } from "@/hooks/useProfileNavigation";
+import { useSave } from "@/hooks/useSave";
 
 type Media = {
     type: "image" | "video";
@@ -43,14 +43,16 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const mediaList: Media[] = post.mediaList || [];
     const { goToProfile } = useProfileNavigation();
 
+    const { saved, toggleSave, loading } = useSave(post.id);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expanded, setExpanded] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [likeActive, setLikeActive] = useState(false);
-    const [saveActive, setSaveActive] = useState(false);
-    const [isFollowing, setIsFollowing] = useState<boolean>(false);
+    const [likeCount, setLikeCount] = useState<number>(post.likeCount ?? 0);
+    const [followStatus, setFollowStatus] = useState<"NONE" | "PENDING" | "ACCEPTED">("NONE");
 
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    const [showOptions, setShowOptions] = useState(false);
 
     // ✅ 현재 인덱스 영상만 play
     useEffect(() => {
@@ -67,33 +69,27 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         });
     }, [currentIndex, isMuted]);
 
-    const handlePrev = () => {
-        if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
-    };
+    const handlePrev = () => currentIndex > 0 && setCurrentIndex((prev) => prev - 1);
+    const handleNext = () =>
+        currentIndex < mediaList.length - 1 && setCurrentIndex((prev) => prev + 1);
 
-    const handleNext = () => {
-        if (currentIndex < mediaList.length - 1) setCurrentIndex((prev) => prev + 1);
-    };
-
-    // ✅ 초기 상태 한 번만 조회
+    // ✅ 초기 Follow 상태 조회
     useEffect(() => {
-        if (post.userId !== currentUserId) {
+        if (post.userId !== currentUserId && followStatus === "NONE") {
             followService
-                .isFollowing(post.userId)
-                .then((res) => setIsFollowing(res))
-                .catch(() => setIsFollowing(false));
+                .getFollowStatus(post.userId)
+                .then(setFollowStatus)
+                .catch(() => setFollowStatus("NONE"));
         }
-    }, [post.userId, currentUserId]);
+    }, [post.userId, currentUserId, followStatus]);
 
-    const [likeCount, setLikeCount] = useState<number>(post.likeCount ?? 0);
-
-    // ✅ 최초 좋아요 여부/갯수 불러오기
+    // ✅ 좋아요 여부/갯수 불러오기
     useEffect(() => {
         LikeService.hasUserLiked(post.id).then(setLikeActive);
         LikeService.getLikeCount(post.id).then(setLikeCount);
     }, [post.id]);
 
-// ✅ 좋아요 토글 핸들러
+    // ✅ 좋아요 토글
     const handleLike = async () => {
         try {
             const message = await LikeService.toggleLike(post.id);
@@ -109,55 +105,41 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         }
     };
 
-    // ✅ 버튼 클릭 → Optimistic Update
-    const handleFollow = async () => {
-        setIsFollowing(true);
+    // ✅ 팔로우/언팔/취소 토글
+    const handleFollowToggle = async () => {
         try {
-            await followService.follow(post.userId);
-        } catch (e) {
-            console.error(e);
-            setIsFollowing(false); // 실패 시 롤백
-        }
-    };
-
-    const handleUnfollow = async () => {
-        setIsFollowing(false);
-        try {
-            await followService.unfollow(post.userId);
-        } catch (e) {
-            console.error(e);
-            setIsFollowing(true); // 실패 시 롤백
-        }
-    };
-
-    // ✅ WebSocket 이벤트로 동기화
-    useFollowEvents({
-        userId: post.userId,
-        onFollowEvent: (event: FollowEvent) => {
-            if (event.followerId === currentUserId) {
-                setIsFollowing(event.following);
+            if (followStatus === "ACCEPTED") {
+                await followService.unfollow(post.userId);
+                setFollowStatus("NONE");
+            } else if (followStatus === "PENDING") {
+                await followService.cancelRequest(post.userId);
+                setFollowStatus("NONE");
+            } else {
+                // follow -> 서버에서 상태 조회까지 확정
+                await followService.follow(post.userId);
+                const newStatus = await followService.getFollowStatus(post.userId);
+                setFollowStatus(newStatus); // 서버 기준으로 확정
             }
-        },
-    });
+        } catch (e) {
+            console.error("팔로우 상태 변경 실패:", e);
+        }
+    };
 
-    const [showOptions, setShowOptions] = useState(false);
 
+    // ✅ 게시글 삭제
     const handleDelete = async () => {
         try {
             await api.delete(`/api/posts/${post.id}`);
             alert("게시글이 삭제되었습니다.");
             setShowOptions(false);
-
-            // ✅ 프론트 피드에서도 제거
-            window.location.reload(); // 간단히 새로고침
-            // 또는 부모에서 props로 posts state 내려줬다면: setPosts(prev => prev.filter(p => p.id !== post.id))
+            window.location.reload(); // 간단하게 새로고침
         } catch (e) {
             console.error(e);
             alert("게시글 삭제 실패");
         }
     };
 
-    // ✅ 더보기 처리
+    // ✅ 본문 더보기 처리
     const lines = post.content.split("\n");
     const firstLine = lines[0] ?? "";
     const secondLine = lines[1] ?? "";
@@ -171,44 +153,60 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                 {/* 왼쪽: 아바타 + 유저 정보 */}
                 <div className="flex items-center space-x-3">
                     <img
-                        src={post.profileImage || "/default-avatar.png"} // ✅ null이면 기본 아바타
+                        src={post.profileImage || "/default-avatar.png"}
                         alt={post.username}
                         className="w-10 h-10 cursor-pointer rounded-full object-cover border border-gray-200"
                         onClick={(e) => goToProfile(e, post.userId)}
                     />
-
                     <div>
                         <div className="flex items-center space-x-1">
-                            <h3 onClick={(e) => goToProfile(e, post.userId)} className="font-semibold cursor-pointer text-sm text-black">{post.username}</h3>
+                            <h3
+                                onClick={(e) => goToProfile(e, post.userId)}
+                                className="font-semibold cursor-pointer text-sm text-black"
+                            >
+                                {post.username}
+                            </h3>
                             <span className="text-xl font-bold text-gray-500">·</span>
                             <span className="text-sm text-gray-500">
-          {post.createdAt ? timeAgo(post.createdAt) : ""}
-        </span>
+                                {post.createdAt ? timeAgo(post.createdAt) : ""}
+                            </span>
                         </div>
                         {post.location && <p className="text-sm text-black">{post.location}</p>}
                     </div>
                 </div>
 
-                {/* 오른쪽: 팔로우 버튼 + 더보기 */}
+                {/* 오른쪽: 팔로우 버튼 + 옵션 */}
                 <div className="flex items-center space-x-4">
                     {currentUserId && post.userId !== currentUserId && (
-                        isFollowing ? (
+                        followStatus === "ACCEPTED" ? (
                             <button
-                                onClick={handleUnfollow}
+                                onClick={handleFollowToggle}
                                 className="px-3 py-1 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition"
                             >
                                 팔로잉
                             </button>
+                        ) : followStatus === "PENDING" ? (
+                            <button
+                                onClick={handleFollowToggle}
+                                className="px-3 py-1 bg-gray-300 text-gray-600 text-xs font-medium rounded hover:bg-gray-400 transition"
+                            >
+                                요청중
+                            </button>
                         ) : (
                             <button
-                                onClick={handleFollow}
+                                onClick={handleFollowToggle}
                                 className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 transition"
                             >
                                 팔로우
                             </button>
                         )
                     )}
-                    <button onClick={() => setShowOptions(true)} className="text-gray-400 hover:text-gray-600">⋯</button>
+                    <button
+                        onClick={() => setShowOptions(true)}
+                        className="text-gray-400 hover:text-gray-600"
+                    >
+                        ⋯
+                    </button>
                 </div>
             </div>
 
@@ -222,14 +220,10 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     {mediaList.map((media, i) => (
                         <div key={i} className="w-full h-full flex-shrink-0 relative">
                             {media.type === "image" ? (
-                                <img
-                                    src={media.url}
-                                    alt={`media-${i}`}
-                                    className="w-full h-full object-cover"
-                                />
+                                <img src={media.url} alt={`media-${i}`} className="w-full h-full object-cover" />
                             ) : (
                                 <video
-                                    ref={(el) => {
+                                    ref={(el: HTMLVideoElement | null) => {
                                         videoRefs.current[i] = el;
                                     }}
                                     src={media.url}
@@ -293,32 +287,33 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             <div className="p-4 flex items-center justify-between">
                 <div className="flex space-x-5">
                     <button onClick={handleLike} className="cursor-pointer">
-                    <span className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-500">
-                        {likeActive ? (
-                            <LikeIconFilled className="w-6 h-6 animate-pop"/>
-                        ) : (
-                            <LikeIcon className="w-6 h-6 animate-pop"/>
-                        )}
-                        {likeCount}
-                    </span>
+                        <span className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-500">
+                            {likeActive ? (
+                                <LikeIconFilled className="w-6 h-6 animate-pop" />
+                            ) : (
+                                <LikeIcon className="w-6 h-6 animate-pop" />
+                            )}
+                            {likeCount}
+                        </span>
                     </button>
 
                     <button
                         onClick={() => onCommentClick && onCommentClick(post)}
                         className="flex items-center text-gray-700 hover:text-gray-500"
                     >
-                        <CommentIcon className="w-6 h-6"/>
+                        <CommentIcon className="w-6 h-6" />
                     </button>
                     <button className="flex items-center text-gray-700 hover:text-gray-500">
-                        <ShareIcon className="w-6 h-6"/>
+                        <ShareIcon className="w-6 h-6" />
                     </button>
                 </div>
                 <button
-                    onClick={() => setSaveActive(!saveActive)}
+                    onClick={toggleSave}
+                    disabled={loading}
                     className="flex items-center text-gray-700 hover:text-gray-500"
                 >
-                    {saveActive ? (
-                        <SaveIconFilled className="w-6 h-6 animate-pop"/>
+                    {saved ? (
+                        <SaveIconFilled className="w-6 h-6 animate-pop" />
                     ) : (
                         <SaveIcon className="w-6 h-6 animate-pop" />
                     )}
@@ -338,7 +333,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     <span className="whitespace-pre-line">{post.content}</span>
                 ) : (
                     <span className="whitespace-pre-line">
-            {firstLine}
+                        {firstLine}
                         {secondLine && `\n${secondLinePreview}`}
                         {hasMore && (
                             <>
@@ -351,7 +346,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                                 </button>
                             </>
                         )}
-          </span>
+                    </span>
                 )}
             </div>
 
@@ -374,12 +369,13 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                     className="w-full text-sm text-black py-2 focus:outline-none"
                 />
             </div>
+
             <PostOptionsModal
                 isOpen={showOptions}
                 onClose={() => setShowOptions(false)}
                 onDelete={handleDelete}
                 onReport={() => alert("신고하기 기능 연동 예정")}
-                isOwner={post.userId === currentUserId} // ✅ 본인 여부 체크
+                isOwner={post.userId === currentUserId}
             />
         </div>
     );

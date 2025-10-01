@@ -3,6 +3,7 @@ package com.climbCommunity.backend.dto.user;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -21,6 +22,9 @@ public class ProfileResponseDto {
     private List<PostThumbnailDto> posts;
     private List<UserLiteDto> followers;
     private List<UserLiteDto> following;
+
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;
 
     @Getter
     @Setter

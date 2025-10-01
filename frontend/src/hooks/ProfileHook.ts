@@ -12,6 +12,7 @@ export interface UserLite {
     userId: string;
     username: string;
     profileImage: string;
+    followStatus?: "PENDING" | "ACCEPTED";
 }
 
 export interface UserWithFollowing extends UserLite {
@@ -37,6 +38,8 @@ export interface Profile {
 
     followers: UserWithFollowing[];
     following: UserWithFollowing[];
+
+    isPrivate: boolean;
 }
 
 // ✅ 공통 프로필 조회 훅
@@ -160,4 +163,30 @@ export function useFollowing(userId: string | undefined) {
     }, [userId]);
 
     return { following, loading, error, setFollowing };
+}
+
+export function useSavedPosts() {
+    const [savedPosts, setSavedPosts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchSavedPosts = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get("/api/posts/saved");
+                setSavedPosts(res.data);
+                setError(null);
+            } catch (err) {
+                console.error(err);
+                setError("Failed to fetch saved posts");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSavedPosts();
+    }, []);
+
+    return { savedPosts, loading, error, setSavedPosts };
 }
