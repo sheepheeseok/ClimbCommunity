@@ -36,6 +36,9 @@ export const NotificationSidebar: React.FC<{
             openPostDetailModal({ postId: n.targetId });
         } else if (n.type === "COMMENT") {
             openPostDetailModal({ postId: n.postId, highlightCommentId: n.targetId });
+        } else if (n.type === "TAGGED") {
+            // ✅ TAGGED 알림 → 해당 게시글로 이동
+            openPostDetailModal({ postId: n.targetId });
         }
     };
 

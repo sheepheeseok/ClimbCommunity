@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -136,6 +137,24 @@ public class UserController {
     ) {
         List<UserSearchResponseDto> result = userService.searchUsersByUserIdPrefix(query);
         return ResponseEntity.ok(result);
+    }
+
+    // ✅ 계정 공개 여부 조회
+    @GetMapping("/me/privacy")
+    public ResponseEntity<Map<String, Boolean>> getPrivacy(@AuthenticationPrincipal UserPrincipal principal) {
+        boolean isPrivate = userService.getPrivacy(principal.getId());
+        return ResponseEntity.ok(Map.of("isPrivate", isPrivate));
+    }
+
+    // ✅ 계정 공개 여부 수정
+    @PatchMapping("/me/privacy")
+    public ResponseEntity<Void> updatePrivacy(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, Boolean> request
+    ) {
+        boolean isPrivate = request.getOrDefault("isPrivate", false);
+        userService.updatePrivacy(principal.getId(), isPrivate);
+        return ResponseEntity.ok().build();
     }
 
 }

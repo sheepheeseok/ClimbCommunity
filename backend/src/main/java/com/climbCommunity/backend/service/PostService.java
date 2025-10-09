@@ -20,6 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.climbCommunity.backend.entity.PostTag;
+import com.climbCommunity.backend.entity.User;
+import com.climbCommunity.backend.repository.UserRepository;
+import com.climbCommunity.backend.repository.PostTagRepository;
+import com.climbCommunity.backend.service.NotificationService;
+import com.climbCommunity.backend.entity.enums.NotificationType;
+import com.climbCommunity.backend.entity.enums.TargetType;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -32,8 +40,9 @@ public class PostService {
     private final S3Service s3Service;
     private final PostImageService postImageService;
     private final PostLikeRepository postLikeRepository;
-    private final PostImageRepository postImageRepository;
-    private final PostVideoRepository postVideoRepository;
+    private final UserRepository userRepository;
+    private final PostTagRepository postTagRepository;
+    private final NotificationService notificationService;
     private final CommentRepository commentRepository;
     private final PostEventPublisher postEventPublisher;
     private final AsyncVideoService asyncVideoService;
@@ -83,6 +92,17 @@ public class PostService {
                 .completedProblems(post.getCompletedProblems()) // ✅ 완등 문제 매핑
                 .commentCount(commentCount)
                 .likeCount(likeCount)
+
+                .taggedUsers(
+                        post.getTags().stream()
+                                .map(tag -> new com.climbCommunity.backend.dto.post.TaggedUserDto(
+                                        tag.getTaggedUser().getUserId(),
+                                        tag.getTaggedUser().getUsername(),
+                                        tag.getTaggedUser().getProfileImage()
+                                ))
+                                .toList()
+                )
+
                 .build();
     }
 
@@ -248,5 +268,34 @@ public class PostService {
     }
 
 
+    @Transactional
+    public void savePostTags(Post post, List<String> taggedUsers) {
+        if (taggedUsers == null || taggedUsers.isEmpty()) return;
+
+        for (String taggedUserId : taggedUsers) {
+            User taggedUser = userRepository.findByUserId(taggedUserId)
+                    .orElseThrow(() -> new NotFoundException("태그된 사용자 없음: " + taggedUserId));
+
+            // 이미 동일한 태그가 존재하는지 체크 (중복 방지)
+            boolean exists = postTagRepository.existsByPostAndTaggedUser(post, taggedUser);
+            if (exists) continue;
+
+            // ✅ 태그 저장
+            PostTag tag = PostTag.builder()
+                    .post(post)
+                    .taggedUser(taggedUser)
+                    .build();
+            postTagRepository.save(tag);
+
+            // ✅ 태그된 사용자에게 알림 전송 (선택)
+            notificationService.createNotification(
+                    taggedUser.getId(),            // ✅ recipientUserId (알림 받는 사람)
+                    post.getUser().getId(),        // ✅ actorUserId (알림 보낸 사람)
+                    NotificationType.TAGGED,
+                    TargetType.POST,
+                    post.getId(), "님이 게시물에 당신을 태그했습니다."
+            );
+        }
+    }
 
 }

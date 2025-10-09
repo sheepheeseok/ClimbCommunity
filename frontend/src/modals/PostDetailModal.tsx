@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFollowEvents, FollowEvent } from "@/hooks/useFollowEvents";
 import api from "@/lib/axios";
 import { PostOptionsModal } from "@/modals/PostOptionsModal";
+import { useSave } from "@/hooks/useSave";
 
 interface Media {
     url: string;
@@ -79,12 +80,10 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [likeActive, setLikeActive] = useState(false);
     const [likeCount, setLikeCount] = useState<number>(post?.likeCount ?? 0);
-    const [saveActive, setSaveActive] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const [newComment, setNewComment] = useState("");
     const [replyTo, setReplyTo] = useState<Comment | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
-
     // ✅ 팔로우 상태 ("NONE" | "PENDING" | "ACCEPTED")
     const [followStatus, setFollowStatus] = useState<FollowStatus>("NONE");
 
@@ -92,6 +91,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
 
     const inputRef = useRef<HTMLInputElement | null>(null);
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    const { saved, toggleSave, loading } = useSave(post.id);
 
     // ✅ WebSocket 이벤트 수신 (팔로우 실시간 동기화)
     useFollowEvents({
@@ -477,16 +477,19 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                                             <ShareIcon className="w-6 h-6" />
                                         </button>
                                     </div>
+                                    {post.userId !== currentUserId && (
                                     <button
-                                        onClick={() => setSaveActive(!saveActive)}
+                                        onClick={toggleSave}
+                                        disabled={loading}
                                         className="flex items-center text-gray-700 hover:text-gray-500"
                                     >
-                                        {saveActive ? (
+                                        {saved ? (
                                             <SaveIconFilled className="w-6 h-6 animate-pop" />
                                         ) : (
                                             <SaveIcon className="w-6 h-6 animate-pop" />
                                         )}
                                     </button>
+                                        )}
                                 </div>
 
                                 {/* 작성 시간 */}

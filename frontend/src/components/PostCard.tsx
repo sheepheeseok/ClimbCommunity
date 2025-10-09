@@ -125,7 +125,6 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
         }
     };
 
-
     // ✅ 게시글 삭제
     const handleDelete = async () => {
         try {
@@ -307,17 +306,19 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                         <ShareIcon className="w-6 h-6" />
                     </button>
                 </div>
-                <button
-                    onClick={toggleSave}
-                    disabled={loading}
-                    className="flex items-center text-gray-700 hover:text-gray-500"
-                >
-                    {saved ? (
-                        <SaveIconFilled className="w-6 h-6 animate-pop" />
-                    ) : (
-                        <SaveIcon className="w-6 h-6 animate-pop" />
-                    )}
-                </button>
+                {post.userId !== currentUserId && (
+                    <button
+                        onClick={toggleSave}
+                        disabled={loading}
+                        className="flex items-center text-gray-700 hover:text-gray-500"
+                    >
+                        {saved ? (
+                            <SaveIconFilled className="w-6 h-6 animate-pop" />
+                        ) : (
+                            <SaveIcon className="w-6 h-6 animate-pop" />
+                        )}
+                    </button>
+                )}
             </div>
 
             {post.completedProblems && (

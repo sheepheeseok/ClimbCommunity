@@ -66,6 +66,10 @@ public class PostController {
                 dto.getThumbnailIndex()
         );
 
+        if (dto.getTaggedUsers() != null && !dto.getTaggedUsers().isEmpty()) {
+            postService.savePostTags(savedPost, dto.getTaggedUsers());
+        }
+
         return ResponseEntity.ok(PostResponseDto.fromEntity(savedPost, 0L, 0L));
     }
 

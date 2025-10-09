@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -29,4 +30,6 @@ public class PostRequestDto {
     private Map<String, Integer> completedProblems;
 
     private Integer thumbnailIndex;
+
+    private List<String> taggedUsers;
 }

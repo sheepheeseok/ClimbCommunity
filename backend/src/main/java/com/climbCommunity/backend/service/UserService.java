@@ -156,4 +156,18 @@ public class UserService {
                 ))
                 .collect(Collectors.toList());
     }
+
+    public boolean getPrivacy(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::isPrivate)
+                .orElse(false);
+    }
+
+    // ✅ 계정 공개 여부 수정
+    @Transactional
+    public void updatePrivacy(Long userId, boolean isPrivate) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPrivate(isPrivate);
+    }
 }

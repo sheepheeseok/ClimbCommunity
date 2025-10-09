@@ -1,6 +1,7 @@
 package com.climbCommunity.backend.dto.post;
 
 import com.climbCommunity.backend.entity.Post;
+import com.climbCommunity.backend.dto.post.TaggedUserDto;
 import com.climbCommunity.backend.entity.enums.Category;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +26,9 @@ public class PostResponseDto {
     private String createdAt;
     private String updatedAt;
     private List<MediaDto> mediaList;
+
+    private List<TaggedUserDto> taggedUsers;
+
     private String thumbnailUrl;  // ✅ 대표 썸네일만 유지
     private String location;
     private Map<String, Integer> completedProblems;

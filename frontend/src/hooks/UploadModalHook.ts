@@ -12,6 +12,7 @@ interface FormData {
     brownCount: string;
     blackCount: string;
     whiteCount: string;
+    taggedUsers: [],
 }
 
 // ✅ video-metadata-thumbnails 기반 wrapper
@@ -43,6 +44,7 @@ export function UploadModalHook() {
         brownCount: "",
         blackCount: "",
         whiteCount: "",
+        taggedUsers: [],
     });
 
     // ✅ 진행률 상태
@@ -161,6 +163,7 @@ export function UploadModalHook() {
                     location: formData.location,
                     completedProblems,
                     thumbnailIndex: 0,
+                    taggedUsers: formData.taggedUsers || [],
                 },
                 files: selectedFiles,
                 thumbnails: finalThumbnail ? [finalThumbnail] : [],
@@ -210,6 +213,7 @@ export function UploadModalHook() {
             brownCount: "",
             blackCount: "",
             whiteCount: "",
+            taggedUsers: [],
         });
         setUploadProgress(0);
         setProcessingProgress(0);
