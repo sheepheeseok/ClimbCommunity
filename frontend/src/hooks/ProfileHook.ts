@@ -190,3 +190,30 @@ export function useSavedPosts() {
 
     return { savedPosts, loading, error, setSavedPosts };
 }
+
+// ✅ 태그된 게시물 목록 조회
+export function useTaggedPosts() {
+    const [taggedPosts, setTaggedPosts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchTaggedPosts = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get("/api/posts/tagged");
+                setTaggedPosts(res.data);
+                setError(null);
+            } catch (err) {
+                console.error("❌ Failed to fetch tagged posts:", err);
+                setError("Failed to fetch tagged posts");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTaggedPosts();
+    }, []);
+
+    return { taggedPosts, loading, error, setTaggedPosts };
+}

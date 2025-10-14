@@ -3,6 +3,7 @@ package com.climbCommunity.backend.controller;
 import com.climbCommunity.backend.dto.post.PostDeleteResponseDto;
 import com.climbCommunity.backend.dto.post.PostRequestDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
+import com.climbCommunity.backend.dto.post.PostUpdateRequestDto;
 import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.entity.PostImage;
 import com.climbCommunity.backend.entity.PostVideo;
@@ -103,6 +104,16 @@ public class PostController {
         return ResponseEntity.ok(postService.toDto(post));
     }
 
+    @PatchMapping("/{postId}")
+    public ResponseEntity<PostResponseDto> updatePost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestBody @Valid PostUpdateRequestDto dto
+    ) {
+        PostResponseDto updatedPost = postService.updatePost(postId, userPrincipal.getId(), dto);
+        return ResponseEntity.ok(updatedPost);
+    }
+
     @GetMapping("/{postId}/progress")
     public ResponseEntity<Map<String, Object>> getProgress(@PathVariable Long postId) {
         int progress = progressService.getProgress(postId);
@@ -114,4 +125,11 @@ public class PostController {
         return ResponseEntity.ok(body);
     }
 
+    @GetMapping("/tagged")
+    public ResponseEntity<List<PostResponseDto>> getTaggedPosts(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        List<PostResponseDto> taggedPosts = postService.getTaggedPosts(userPrincipal.getId());
+        return ResponseEntity.ok(taggedPosts);
+    }
 }

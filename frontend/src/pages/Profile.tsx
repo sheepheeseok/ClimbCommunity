@@ -7,7 +7,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { followService } from "@/services/followService";
 import { FollowersModal } from "@/modals/FollowersModal";
-import { useSavedPosts } from "@/hooks/ProfileHook";
+import { useSavedPosts, useTaggedPosts } from "@/hooks/ProfileHook";
+
 
 interface Tab {
     id: "posts" | "saved" | "tagged";
@@ -22,6 +23,7 @@ export const Profile: React.FC = () => {
     const navigate = useNavigate();
     const S3_BASE_URL = "https://pj-climb-bucket.s3.ap-northeast-3.amazonaws.com/";
     const { savedPosts, loading: savedLoading } = useSavedPosts();
+    const { taggedPosts, loading: taggedLoading } = useTaggedPosts();
 
     const { profile, loading, error } = userId ? useUserProfile(userId) : useMyProfile();
     const { followers } = useFollowers(profile?.userId);
@@ -81,7 +83,7 @@ export const Profile: React.FC = () => {
             case "saved":
                 return savedPosts;
             case "tagged":
-                return profile.taggedPosts?.length ? profile.taggedPosts : [];
+                return taggedPosts;
             default:
                 return profile.posts?.length ? profile.posts : [];
         }

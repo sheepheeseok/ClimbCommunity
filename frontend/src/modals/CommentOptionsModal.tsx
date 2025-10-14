@@ -82,15 +82,9 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                         {/* 본인 댓글 */}
                         <button
                             onClick={handleDelete}
-                            className="w-full py-3 text-red-600 font-semibold border-b border-gray-200 hover:bg-gray-50"
+                            className="w-full py-3 text-red-600 text-sm border-b border-gray-200 hover:bg-gray-50"
                         >
                             삭제
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 text-gray-800 border-b border-gray-200 hover:bg-gray-50"
-                        >
-                            수정
                         </button>
                     </>
                 ) : (
@@ -98,7 +92,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                         {/* 다른 사람 댓글 */}
                         <button
                             onClick={handleReport}
-                            className="w-full py-3 text-red-600 font-semibold border-b border-gray-200 hover:bg-gray-50"
+                            className="w-full py-3 text-red-600 text-sm border-b border-gray-200 hover:bg-gray-50"
                         >
                             신고
                         </button>
@@ -106,7 +100,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                 )}
                 <button
                     onClick={onClose}
-                    className="w-full py-3 text-gray-800 hover:bg-gray-50"
+                    className="w-full py-3 text-gray-800 text-sm hover:bg-gray-50"
                 >
                     취소
                 </button>

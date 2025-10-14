@@ -9,5 +9,6 @@ import java.util.List;
 
 public interface PostTagRepository extends JpaRepository<PostTag, Long> {
     List<PostTag> findByPost(Post post);
+    List<PostTag> findByTaggedUser(User user);
     boolean existsByPostAndTaggedUser(Post post, User user);
 }

@@ -14,6 +14,7 @@ import { PostOptionsModal } from "@/modals/PostOptionsModal";
 import api from "@/lib/axios";
 import { useProfileNavigation } from "@/hooks/useProfileNavigation";
 import { useSave } from "@/hooks/useSave";
+import { useNavigate } from "react-router-dom";
 
 type Media = {
     type: "image" | "video";
@@ -42,7 +43,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     const { userId: currentUserId } = useAuth();
     const mediaList: Media[] = post.mediaList || [];
     const { goToProfile } = useProfileNavigation();
-
+    const navigate = useNavigate();
     const { saved, toggleSave, loading } = useSave(post.id);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expanded, setExpanded] = useState(false);
@@ -375,6 +376,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
                 isOpen={showOptions}
                 onClose={() => setShowOptions(false)}
                 onDelete={handleDelete}
+                onEdit={() => navigate(`/edit/${post.id}`)}
                 onReport={() => alert("신고하기 기능 연동 예정")}
                 isOwner={post.userId === currentUserId}
             />

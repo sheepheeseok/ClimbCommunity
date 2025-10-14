@@ -8,6 +8,7 @@ import {Profile} from "@/pages/Profile";
 import {SettingsPage} from "@/pages/SettingPage";
 import {MessagesPage} from "@/pages/MessagesPage";
 import { ChatProvider } from "@/data/ChatContext";
+import EditPostPage from "@/pages/EditPostPage";
 
 function App() {
 
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/profile/settingPage" element={<Layout><SettingsPage/></Layout>}/>
                 <Route path="/messages/:roomId" element={<Layout><MessagesPage/></Layout>} />
                 <Route path="/chatPage" element={<Layout><MessagesPage/></Layout>}/>
+                <Route path="/edit/:postId" element={<EditPostPage />} />
             </Routes>
             </ChatProvider>
         </BrowserRouter>

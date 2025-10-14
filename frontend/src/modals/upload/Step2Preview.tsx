@@ -65,6 +65,34 @@ export default function Step2Preview({ modal }: Props) {
         return () => clearTimeout(delay);
     }, [search, formData.taggedUsers, myUserId]);
 
+    const [placeQuery, setPlaceQuery] = useState("");
+    const [placeResults, setPlaceResults] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (placeQuery.trim().length < 1) {
+            setPlaceResults([]);
+            return;
+        }
+
+        const delay = setTimeout(() => {
+            api.get(`/api/naver/search?query=${placeQuery}`)
+                .then((res) => setPlaceResults(res.data))
+                .catch(() => setPlaceResults([]));
+        }, 300);
+
+        return () => clearTimeout(delay);
+    }, [placeQuery]);
+
+    const handleSelectPlace = (place: any) => {
+        const cleanTitle = place.title.replace(/<[^>]+>/g, ""); // <b> 제거
+        setFormData((prev: any) => ({
+            ...prev,
+            location: cleanTitle,
+        }));
+        setPlaceQuery(cleanTitle);
+        setPlaceResults([]);
+    };
+
     const difficultyColors = [
         { name: "빨강", color: "bg-red-500", key: "redCount" },
         { name: "보라", color: "bg-purple-500", key: "purpleCount" },
@@ -118,12 +146,33 @@ export default function Step2Preview({ modal }: Props) {
                             </div>
                             <input
                                 type="text"
-                                name="location"
-                                value={formData.location}
-                                onChange={handleInputChange}
+                                value={placeQuery || formData.location}
+                                onChange={(e) => setPlaceQuery(e.target.value)}
                                 placeholder="클라이밍장 이름을 입력하세요"
                                 className="w-full pl-10 pr-4 py-3 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
+
+                            {/* ✅ 자동완성 리스트 */}
+                            {placeResults.length > 0 && (
+                                <div
+                                    className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                    {placeResults.map((place, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => handleSelectPlace(place)}
+                                            className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                        >
+                                            <div
+                                                className="font-medium text-gray-800"
+                                                dangerouslySetInnerHTML={{__html: place.title}}
+                                            />
+                                            <p className="text-xs text-gray-500">
+                                                {place.roadAddress || place.address}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div>

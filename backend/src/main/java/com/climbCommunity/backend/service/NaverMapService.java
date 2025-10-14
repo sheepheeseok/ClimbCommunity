@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -31,6 +29,12 @@ public class NaverMapService {
 
     @Value("${naver.geocode-url}")
     private String geocodeUrl;
+
+    @Value("${naver.client-id-dev}")
+    private String developersClientId;
+
+    @Value("${naver.client-secret-dev}")
+    private String developersClientSecret;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final AddressNormalizer addressNormalizer;
@@ -143,5 +147,49 @@ public class NaverMapService {
     private String extractDongFromAddress(String jibunAddress) {
         String[] parts = jibunAddress.split(" ");
         return parts.length >= 3 ? parts[2] : "";  // 구/동 기준
+    }
+
+    /**
+     * 📍 네이버 지역 검색 API (Local Search)
+     * Developers 콘솔에서 발급한 Client ID / Secret 사용
+     */
+    public List<Map<String, String>> searchPlaces(String query) {
+        String url = "https://openapi.naver.com/v1/search/local.json";
+
+        try {
+            String uri = UriComponentsBuilder
+                    .fromHttpUrl(url)
+                    .queryParam("query", query)
+                    .queryParam("display", 5) // 최대 5개만
+                    .build(false)
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Naver-Client-Id", developersClientId);
+            headers.set("X-Naver-Client-Secret", developersClientSecret);
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<JsonNode> response = restTemplate.exchange(uri, HttpMethod.GET, entity, JsonNode.class);
+
+            JsonNode items = response.getBody().get("items");
+            List<Map<String, String>> results = new ArrayList<>();
+
+            if (items != null && items.size() > 0) {
+                for (JsonNode item : items) {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("title", item.get("title").asText());
+                    map.put("address", item.get("address").asText());
+                    map.put("roadAddress", item.get("roadAddress").asText());
+                    map.put("mapx", item.get("mapx").asText());
+                    map.put("mapy", item.get("mapy").asText());
+                    results.add(map);
+                }
+            }
+
+            return results;
+        } catch (Exception e) {
+            log.warn("❌ Naver Local Search API 호출 실패: {}", e.getMessage());
+            return List.of();
+        }
     }
 }

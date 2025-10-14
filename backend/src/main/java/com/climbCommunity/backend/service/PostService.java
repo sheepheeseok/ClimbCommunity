@@ -2,6 +2,7 @@ package com.climbCommunity.backend.service;
 import com.climbCommunity.backend.dto.post.MediaDto;
 import com.climbCommunity.backend.dto.post.PostDeleteResponseDto;
 import com.climbCommunity.backend.dto.post.PostResponseDto;
+import com.climbCommunity.backend.dto.post.PostUpdateRequestDto;
 import com.climbCommunity.backend.dto.useractivity.MyPostDto;
 import com.climbCommunity.backend.entity.Post;
 import java.io.File;
@@ -30,6 +31,7 @@ import com.climbCommunity.backend.entity.enums.TargetType;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -297,5 +299,44 @@ public class PostService {
             );
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<PostResponseDto> getTaggedPosts(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+        List<PostTag> postTags = postTagRepository.findByTaggedUser(user);
+
+        return postTags.stream()
+                .map(pt -> postRepository.findById(pt.getPost().getId())
+                        .map(this::toDto)
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    @Transactional
+    public PostResponseDto updatePost(Long postId, Long userId, PostUpdateRequestDto dto) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException("게시글을 찾을 수 없습니다."));
+
+        if (!post.getUser().getId().equals(userId)) {
+            throw new SecurityException("게시글 수정 권한이 없습니다.");
+        }
+
+        if (dto.getContent() != null) {
+            post.setContent(dto.getContent());
+        }
+        if (dto.getLocation() != null) {
+            post.setLocation(dto.getLocation());
+        }
+        if (dto.getCompletedProblems() != null) {
+            post.setCompletedProblems(dto.getCompletedProblems());
+        }
+
+        Post saved = postRepository.save(post);
+        return toDto(saved);
+    }
+
 
 }
