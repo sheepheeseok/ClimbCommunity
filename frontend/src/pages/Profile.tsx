@@ -101,36 +101,48 @@ export const Profile: React.FC = () => {
 
     const handleStartChat = async () => {
         if (!userId || !myUserId) return;
+
         try {
+            // ✅ 1. 기존 방이 있는지 확인
             const resList = await api.get(`/api/chats/${myUserId}`);
             const existingRoom = resList.data.find(
-                (room: any) => room.partnerId === profile.id || room.userId === profile.id
+                (room: any) =>
+                    room.partnerId === profile.id || room.userId === profile.id
             );
+
+            let roomId: number;
 
             if (existingRoom) {
-                navigate(`/messages/${existingRoom.roomId}`);
-                return;
+                // ✅ 기존 방 존재 → 해당 방으로 이동
+                roomId = existingRoom.roomId;
+            } else {
+                // ✅ 2. 방이 없으면 새로 생성
+                const res = await api.post(
+                    `/api/chats/room?userId1=${myUserId}&userId2=${profile.id}`
+                );
+
+                roomId =
+                    typeof res.data === "number"
+                        ? res.data
+                        : res.data?.roomId ?? res.data?.[0]?.roomId;
+
+                if (!roomId) {
+                    alert("채팅방 생성 실패: roomId 없음");
+                    return;
+                }
             }
 
-            const res = await api.post(
-                `/api/chats/room?userId1=${myUserId}&userId2=${profile.id}`
-            );
-
-            const roomId =
-                typeof res.data === "number"
-                    ? res.data
-                    : res.data?.roomId ?? res.data?.[0]?.roomId;
-
-            if (!roomId) {
-                alert("채팅방 생성 실패: roomId 없음");
-                return;
-            }
+            // ✅ 3. 이동 후 페이지 새로고침
             navigate(`/messages/${roomId}`);
+            setTimeout(() => {
+                window.location.reload();
+            }, 200); // 살짝 지연 후 새로고침
         } catch (err) {
             console.error("❌ 채팅방 생성 실패:", err);
             alert("채팅방 생성에 실패했습니다.");
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
