@@ -26,6 +26,7 @@ public class PostVideo {
 
     @Column(nullable = false, length = 1000)
     private String videoUrl;
+    private String type;
 
     private LocalDateTime createdAt;
 

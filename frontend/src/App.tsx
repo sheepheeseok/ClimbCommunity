@@ -8,6 +8,7 @@ import {Profile} from "@/pages/Profile";
 import {SettingsPage} from "@/pages/SettingPage";
 import {MessagesPage} from "@/pages/MessagesPage";
 import { ChatProvider } from "@/data/ChatContext";
+import { UIProvider } from "@/hooks/UIContext";
 import EditPostPage from "@/pages/EditPostPage";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
     return (
         <BrowserRouter>
             <ChatProvider>
+                <UIProvider>
             <Routes>
                 <Route path="/" element={<Layout><Home/></Layout>} />
                 <Route path="/login" element={<Login/>} />
@@ -41,6 +43,7 @@ function App() {
                 <Route path="/chatPage" element={<Layout><MessagesPage/></Layout>}/>
                 <Route path="/edit/:postId" element={<EditPostPage />} />
             </Routes>
+                </UIProvider>
             </ChatProvider>
         </BrowserRouter>
     );

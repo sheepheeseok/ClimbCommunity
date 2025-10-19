@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/icons/dabeyo-logo.svg";
 import api, { setAccessToken } from "@/lib/axios";
+import { useUI } from "@/hooks/UIContext";
 
 export default function Header() {
     const [open, setOpen] = useState(false);
@@ -58,13 +59,18 @@ export default function Header() {
             console.error("로그아웃 실패:", error);
         }
     };
+    const { setIsSearchOpen, setIsNotificationOpen } = useUI();
+    const handleLogoClick = () => {
+        setIsSearchOpen(false);
+        setIsNotificationOpen(false);
+    };
 
     return (
         <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
             <div className="max-w-[1920px] mx-auto px-4">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link to="/" className="inline-flex items-center">
+                    <Link to="/" onClick={handleLogoClick} className="inline-flex items-center">
                         <img src={Logo} alt="DabEyo 로고" className="h-14 w-auto" />
                     </Link>
 

@@ -11,11 +11,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <Header />
+            <Navbar/>
+            <Header/>
             <main
-                className="pt-16 pb-16 md:pb-0 transition-all duration-300"
-                style={{ paddingLeft: isAnySidebarOpen ? "92px" : "256px" }}
+                className={`pt-16 pb-16 md:pb-0 transition-all duration-300
+              ${isAnySidebarOpen ? 'lg:pl-[92px]' : 'lg:pl-[256px]'}`}
             >
                 {children}
             </main>

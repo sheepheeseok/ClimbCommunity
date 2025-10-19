@@ -3,6 +3,7 @@ package com.climbCommunity.backend.dto.post;
 import com.climbCommunity.backend.entity.Post;
 import com.climbCommunity.backend.dto.post.TaggedUserDto;
 import com.climbCommunity.backend.entity.enums.Category;
+import com.climbCommunity.backend.service.S3Service;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -36,27 +37,18 @@ public class PostResponseDto {
     private long likeCount;
     private boolean savedByMe; // ✅ 북마크 여부
 
-    /**
-     * savedByMe 없는 기본 변환
-     */
     public static PostResponseDto fromEntity(Post post) {
         return fromEntity(post, 0L, 0L, false);
     }
 
-    /**
-     * 댓글수/좋아요수만 포함
-     */
     public static PostResponseDto fromEntity(Post post, long commentCount, long likeCount) {
         return fromEntity(post, commentCount, likeCount, false);
     }
 
-    /**
-     * 댓글수/좋아요수 + 저장여부 포함
-     */
     public static PostResponseDto fromEntity(Post post, long commentCount, long likeCount, boolean savedByMe) {
+        // ✅ 기본 변환 (S3 경로가 아닌 raw 경로 사용)
         List<MediaDto> mediaList = new ArrayList<>();
 
-        // 이미지 매핑
         mediaList.addAll(
                 post.getImages().stream()
                         .map(img -> MediaDto.builder()
@@ -67,7 +59,6 @@ public class PostResponseDto {
                         ).toList()
         );
 
-        // 비디오 매핑
         mediaList.addAll(
                 post.getVideos().stream()
                         .map(video -> MediaDto.builder()
@@ -78,7 +69,6 @@ public class PostResponseDto {
                         ).toList()
         );
 
-        // 정렬 (orderIndex 기준)
         mediaList.sort(Comparator.comparingInt(MediaDto::getOrderIndex));
 
         return PostResponseDto.builder()
@@ -97,7 +87,53 @@ public class PostResponseDto {
                 .completedProblems(post.getCompletedProblems())
                 .commentCount(commentCount)
                 .likeCount(likeCount)
-                .savedByMe(savedByMe) // ✅ 북마크 여부 반영
+                .savedByMe(savedByMe)
+                .build();
+    }
+
+    public static PostResponseDto fromEntityWithS3(Post post, S3Service s3Service) {
+        // ✅ S3 full URL 변환 버전 (FeedService 등에서 사용)
+        List<MediaDto> mediaList = new ArrayList<>();
+
+        mediaList.addAll(
+                post.getImages().stream()
+                        .map(img -> MediaDto.builder()
+                                .url(s3Service.getFileUrl(img.getImageUrl()))
+                                .type("image")
+                                .orderIndex(img.getOrderIndex())
+                                .build()
+                        ).toList()
+        );
+
+        mediaList.addAll(
+                post.getVideos().stream()
+                        .map(video -> MediaDto.builder()
+                                .url(s3Service.getFileUrl(video.getVideoUrl()))
+                                .type("video")
+                                .orderIndex(video.getOrderIndex())
+                                .build()
+                        ).toList()
+        );
+
+        mediaList.sort(Comparator.comparingInt(MediaDto::getOrderIndex));
+
+        return PostResponseDto.builder()
+                .id(post.getId())
+                .content(post.getContent())
+                .category(post.getCategory())
+                .username(post.getUser().getUsername())
+                .userId(post.getUser().getUserId())
+                .status(post.getStatus().name())
+                .profileImage(post.getUser().getProfileImage())
+                .createdAt(format(post.getCreatedAt()))
+                .updatedAt(post.getUpdatedAt() != null ? format(post.getUpdatedAt()) : null)
+                .mediaList(mediaList)
+                .thumbnailUrl(post.getThumbnailUrl() != null ? s3Service.getFileUrl(post.getThumbnailUrl()) : null)
+                .location(post.getLocation())
+                .completedProblems(post.getCompletedProblems())
+                .commentCount(0L)
+                .likeCount(0L)
+                .savedByMe(false)
                 .build();
     }
 

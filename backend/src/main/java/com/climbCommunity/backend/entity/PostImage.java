@@ -24,6 +24,7 @@ public class PostImage {
 
     @Column(nullable = false, length = 1000)
     private String imageUrl;
+    private String type;
 
     private LocalDateTime createdAt;
 

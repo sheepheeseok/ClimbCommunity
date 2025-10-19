@@ -1,4 +1,3 @@
-// src/hooks/useChat.ts
 import { useEffect, useState, useRef } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { WS_BROKER_URL } from "@/utils/config";
@@ -8,7 +7,7 @@ export interface ChatMessage {
     id?: number;
     type: "CHAT" | "IMAGE" | "VIDEO" | "TYPING";
     roomId: number;
-    senderId: number;   // ✅ number로
+    senderId: number;
     content: string;
     createdAt?: string;
 }
@@ -18,8 +17,15 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
     const [typingUser, setTypingUser] = useState<number | null>(null);
     const clientRef = useRef<Client | null>(null);
 
-    // 초기 메시지 로딩
+    // ✅ roomId가 바뀌면 메시지 초기화
     useEffect(() => {
+        setMessages([]);
+        setTypingUser(null);
+    }, [roomId]);
+
+    // ✅ 초기 메시지 로딩
+    useEffect(() => {
+        if (!roomId) return;
         const fetchMessages = async () => {
             try {
                 const res = await api.get<ChatMessage[]>(`/api/chats/${roomId}/messages`);
@@ -28,17 +34,20 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
                 console.error("메시지 불러오기 실패:", err);
             }
         };
-        if (roomId) fetchMessages();
+        fetchMessages();
     }, [roomId]);
 
-    // WebSocket 연결
+    // ✅ WebSocket 연결
     useEffect(() => {
+        if (!roomId || !myUserId) return;
+
         const client = new Client({
             brokerURL: WS_BROKER_URL,
             connectHeaders: {
                 Authorization: "Bearer " + localStorage.getItem("accessToken"),
             },
             reconnectDelay: 5000,
+            debug: (str) => console.log(str),
         });
 
         client.onConnect = () => {
@@ -48,13 +57,11 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
                 const msg: ChatMessage = JSON.parse(frame.body);
 
                 if (msg.type === "TYPING") {
-                    // 내가 보낸 typing은 무시, 상대방 것만 표시
                     if (msg.senderId !== myUserId) {
                         setTypingUser(msg.senderId);
                         setTimeout(() => setTypingUser(null), 2000);
                     }
                 } else {
-                    // 메시지가 오면 typing 상태 해제
                     setTypingUser(null);
                     setMessages((prev) => [...prev, msg]);
                 }
@@ -69,12 +76,18 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
         clientRef.current = client;
 
         return () => {
-            client.deactivate();
+            if (client && client.active) {
+                console.log("🔌 WebSocket 연결 해제:", roomId);
+                client.deactivate();
+            }
         };
     }, [roomId, myUserId]);
 
-    // 메시지 전송
-    const sendMessage = (content: string, type: "CHAT" | "IMAGE" | "VIDEO" = "CHAT") => {
+    // ✅ 메시지 전송
+    const sendMessage = (
+        content: string,
+        type: "CHAT" | "IMAGE" | "VIDEO" = "CHAT"
+    ) => {
         if (!clientRef.current || !clientRef.current.connected) return;
 
         const message: ChatMessage = {
@@ -88,9 +101,17 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
             destination: "/app/chat.sendMessage",
             body: JSON.stringify(message),
         });
+
+        // 낙관적 업데이트 (보내자마자 바로 반영)
+        if (type === "CHAT") {
+            setMessages((prev) => [
+                ...prev,
+                { ...message, createdAt: new Date().toISOString() },
+            ]);
+        }
     };
 
-    // 입력중 이벤트 전송
+    // ✅ 입력중 이벤트 전송
     const sendTyping = () => {
         if (!clientRef.current || !clientRef.current.connected) return;
 
@@ -107,12 +128,12 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
         });
     };
 
-    // 파일 업로드 → 메시지 전송
+    // ✅ 파일 업로드 → 메시지 전송
     const sendFile = async (file: File) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("roomId", roomId.toString());
-        formData.append("accountId", myUserId.toString());   // ✅ 추가
+        formData.append("accountId", myUserId.toString());
         if (partnerId !== undefined) {
             formData.append("partnerId", partnerId.toString());
         }
@@ -123,7 +144,6 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
 
         const fileUrl = res.data;
         const type = file.type.startsWith("video/") ? "VIDEO" : "IMAGE";
-
         sendMessage(fileUrl, type);
     };
 

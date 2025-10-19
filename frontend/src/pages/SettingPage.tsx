@@ -4,7 +4,6 @@ import {
     ProfileEdit,
     NotificationSettings,
     PrivacySettings,
-    BlockedAccounts,
 } from "@/components/settings";
 
 export const SettingsPage: React.FC = () => {
@@ -14,7 +13,6 @@ export const SettingsPage: React.FC = () => {
         { id: "profile", label: "프로필 편집" },
         { id: "notifications", label: "알림 설정" },
         { id: "privacy", label: "계정 공개 범위" },
-        { id: "blocked", label: "차단된 계정" },
     ];
 
     const renderContent = () => {
@@ -25,8 +23,6 @@ export const SettingsPage: React.FC = () => {
                 return <NotificationSettings />;
             case "privacy":
                 return <PrivacySettings />;
-            case "blocked":
-                return <BlockedAccounts />;
         }
     };
 

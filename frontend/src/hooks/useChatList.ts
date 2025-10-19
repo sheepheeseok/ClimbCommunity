@@ -16,7 +16,7 @@ export interface ChatPreview {
     lastMessage: string;
     unreadCount: number;
     online: boolean;
-    timestamp?: string; // ✅ 마지막 메시지 시간
+    timestamp?: string;
 }
 
 // ✅ 메시지 변환 함수
@@ -32,21 +32,21 @@ function formatLastMessage(type: string, content: string) {
 }
 
 export function useChatList(myUserId: string) {
-    const { id } = useAuth();
+    const { id } = useAuth(); // 로그인 유저 PK
     const [chatList, setChatList] = useState<ChatPreview[]>([]);
     const clientRef = useRef<Client | null>(null);
 
-    // ✅ 초기 목록 불러오기
-    useEffect(() => {
-        if (!id) return;
-        api.get(`/api/chats/${id}`).then((res) => {
+    // ✅ 공통 fetch 함수
+    const fetchChatList = async () => {
+        try {
+            if (!id) return;
+            const res = await api.get(`/api/chats/${id}`);
             const mapped = res.data.map((chat: any) => ({
                 ...chat,
                 lastMessage: formatLastMessage(chat.type, chat.lastMessage),
                 timestamp: chat.timestamp || new Date().toISOString(),
             }));
 
-            // 최신순 정렬
             mapped.sort(
                 (a: any, b: any) =>
                     new Date(b.timestamp).getTime() -
@@ -54,7 +54,14 @@ export function useChatList(myUserId: string) {
             );
 
             setChatList(mapped);
-        });
+        } catch (err) {
+            console.error("❌ 채팅 목록 불러오기 실패:", err);
+        }
+    };
+
+    // ✅ 초기 목록 불러오기
+    useEffect(() => {
+        fetchChatList();
     }, [id]);
 
     // ✅ WebSocket 연결
@@ -98,7 +105,6 @@ export function useChatList(myUserId: string) {
                                 : chat
                         );
 
-                        // ✅ 최신 메시지 순서대로 정렬
                         return [...updated].sort(
                             (a, b) =>
                                 new Date(b.timestamp || 0).getTime() -
@@ -124,9 +130,9 @@ export function useChatList(myUserId: string) {
             client.deactivate();
             console.log("ChatList WebSocket Disconnected");
         };
-    }, [chatList.length]);
+    }, [chatList]); // ✅ 변경: length → 전체 chatList 감시
 
-    // ✅ 안읽은 메시지 초기화 (서버 + 프론트 상태 동기화)
+    // ✅ 안읽은 메시지 초기화
     const markAsRead = async (roomId: number) => {
         try {
             await api.patch(`/api/chats/${roomId}/read`, null, {
@@ -143,8 +149,12 @@ export function useChatList(myUserId: string) {
         }
     };
 
+    // ✅ 외부에서 강제로 새로고침 가능
+    const refreshChatList = () => {
+        fetchChatList();
+    };
 
     const unreadRooms = chatList.filter((c) => c.unreadCount > 0).length;
 
-    return { chatList, markAsRead, unreadRooms };
+    return { chatList, markAsRead, unreadRooms, refreshChatList };
 }

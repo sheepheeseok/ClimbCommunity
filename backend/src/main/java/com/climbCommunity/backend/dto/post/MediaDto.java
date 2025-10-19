@@ -10,9 +10,9 @@ public class MediaDto {
     private String type;      // "image" | "video"
     private int orderIndex;   // 업로드 순서
 
-    public MediaDto(String type, String url, int orderIndex) {
-        this.type = type;
+    public MediaDto(String url, String type, int orderIndex) {
         this.url = url;
+        this.type = type;
         this.orderIndex = orderIndex;
     }
 }

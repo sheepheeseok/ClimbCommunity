@@ -81,7 +81,11 @@ export const FollowersModal: React.FC<Props> = ({
 
                 {/* User List */}
                 <div className="max-h-[70vh] overflow-y-auto">
-                    <UserList users={filteredUsers} onToggleFollow={onToggleFollow} />
+                    <UserList
+                        users={filteredUsers}
+                        onToggleFollow={onToggleFollow}
+                        onClose={onClose} // ✅ 모달 닫기 콜백 전달
+                    />
                 </div>
             </div>
         </div>

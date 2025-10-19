@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ public class UserService {
     private final NaverReverseGeocodingService naverReverseGeocodingService;
     private final UserAddressRepository userAddressRepository;
     private final S3Service s3Service;
+    private final FollowRepository followRepository;
 
     public User saveUser(User user) {
         return userRepository.save(user);
@@ -169,5 +171,24 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setPrivate(isPrivate);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSuggestionDto> getSuggestedFriends(Long userId) {
+        // 1️⃣ 내 팔로잉/팔로워 목록 조회
+        List<Long> excludedIds = followRepository.findAllFollowedOrFollowingIds(userId);
+        excludedIds.add(userId); // 자기 자신 제외
+
+        // 2️⃣ 팔로우 안 되어있는 유저 중 랜덤 4명
+        List<User> candidates = userRepository.findByIdNotIn(excludedIds);
+
+        // 3️⃣ 랜덤 4명 추출
+        Collections.shuffle(candidates);
+        List<User> picked = candidates.stream().limit(4).toList();
+
+        // 4️⃣ DTO 변환
+        return picked.stream()
+                .map(u -> new UserSuggestionDto(u.getUserId(), u.getUsername(), u.getProfileImage()))
+                .toList();
     }
 }

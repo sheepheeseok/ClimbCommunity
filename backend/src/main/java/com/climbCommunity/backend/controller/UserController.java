@@ -157,4 +157,11 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/me/suggestions")
+    public ResponseEntity<List<UserSuggestionDto>> getSuggestedFriends(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        List<UserSuggestionDto> suggestions = userService.getSuggestedFriends(userPrincipal.getId());
+        return ResponseEntity.ok(suggestions);
+    }
 }

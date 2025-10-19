@@ -6,6 +6,7 @@ import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useChat } from "@/data/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatPreview } from "@/hooks/useChatList";
+import api from "@/lib/axios";
 
 export function MessagesPage() {
     const { id: myUserId } = useAuth();   // 로그인 유저 PK
@@ -22,21 +23,37 @@ export function MessagesPage() {
         };
     }, []);
 
+
     useEffect(() => {
+        // ✅ roomId가 없으면 activeChat 초기화
         if (!roomId) {
             setActiveChat(null);
             return;
         }
 
+        // ✅ chatList가 아직 로드 중이면 대기
         if (!chatList || chatList.length === 0) return;
 
+        // ✅ 로드 완료 시 roomId 매칭
         const chat = chatList.find((c: ChatPreview) => String(c.roomId) === roomId);
+
         if (chat) {
             setActiveChat(chat);
         } else {
-            navigate("/messages", { replace: true });
+            // ✅ fallback: 서버에서 직접 방 정보 가져오기
+            (async () => {
+                try {
+                    const res = await api.get(`/api/chats/${roomId}`);
+                    if (res.data) {
+                        setActiveChat(res.data);
+                    }
+                } catch (err) {
+                    console.warn(`채팅방(${roomId})을 불러올 수 없습니다.`);
+                    navigate("/messages", { replace: true });
+                }
+            })();
         }
-    }, [roomId, chatList, navigate]);
+    }, [roomId, chatList]);
 
     useEffect(() => {
         window.scrollTo(0, 0);

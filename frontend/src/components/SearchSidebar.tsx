@@ -82,6 +82,9 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
     // ✅ 바깥 클릭 감지
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
+            const isMobile = window.innerWidth < 1024; // ✅ 모바일 감지
+            if (isMobile) return; // 모바일에서는 닫히지 않게 차단
+
             const target = event.target as Node;
             if (sidebarRef.current?.contains(target)) return;
             if (navbarRef.current?.contains(target)) return;

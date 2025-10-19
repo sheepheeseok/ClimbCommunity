@@ -21,35 +21,40 @@ export const NotificationItem: React.FC<{
     notification: Notification;
     onClick: (n: Notification) => void;
     onRemove?: (id: string) => void; // ✅ 알림 제거 콜백
-}> = ({ notification, onClick, onRemove }) => {
+    onUsernameClick?: () => void; // ✅ 닉네임 클릭 시 알림창 닫기용
+}> = ({ notification, onClick, onRemove, onUsernameClick }) => {
     const navigate = useNavigate();
 
+    // ✅ 프로필 이동 함수 (닉네임/프로필 이미지 클릭 시)
     const goToProfile = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (notification.actorUserId) {
             navigate(`/${notification.actorUserId}/profile`);
+            onUsernameClick?.(); // ✅ 프로필 클릭 시 알림창 닫기
         }
     };
-    console.log("🔔 notification:", notification);
+
+    // ✅ 팔로우 승인
     const handleAccept = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!notification.targetId) return;
         try {
             await followService.acceptFollow(notification.targetId);
             console.log("✅ 팔로우 요청 승인 완료");
-            onRemove?.(notification.id); // 승인 후 알림 제거
+            onRemove?.(notification.id);
         } catch (err) {
             console.error("❌ 팔로우 승인 실패", err);
         }
     };
 
+    // ✅ 팔로우 거절
     const handleReject = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!notification.targetId) return;
         try {
             await followService.rejectFollow(notification.targetId);
             console.log("✅ 팔로우 요청 거절 완료");
-            onRemove?.(notification.id); // 거절 후 알림 제거
+            onRemove?.(notification.id);
         } catch (err) {
             console.error("❌ 팔로우 거절 실패", err);
         }
@@ -60,23 +65,22 @@ export const NotificationItem: React.FC<{
             className={`flex items-start space-x-3 p-2 hover:bg-gray-50 transition-colors cursor-pointer ${
                 !notification.isRead ? "bg-blue-50" : ""
             }`}
-            onClick={() => onClick(notification)}
+            onClick={() => onClick(notification)} // 게시글 알림 클릭 시
         >
+            {/* 프로필 이미지 */}
             <img
                 src={notification.profileImage}
                 alt={notification.username}
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0 cursor-pointer"
                 onClick={goToProfile}
             />
+
             <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-900 leading-relaxed">
                     {notification.actorUserId && (
                         <span
                             className="font-semibold cursor-pointer hover:underline"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/${notification.actorUserId}/profile`);
-                            }}
+                            onClick={goToProfile}
                         >
                             {notification.actorUserId}
                         </span>
@@ -84,14 +88,14 @@ export const NotificationItem: React.FC<{
                     <span className="ml-1">{notification.action}</span>
                 </p>
 
-                {/* 댓글 프리뷰 */}
+                {/* 댓글 미리보기 */}
                 {notification.type === "COMMENT" && notification.preview && (
                     <p className="text-sm text-gray-600 truncate">
                         "{notification.preview}"
                     </p>
                 )}
 
-                {/* FOLLOW_REQUEST → 승인/거절 버튼 */}
+                {/* FOLLOW_REQUEST → 승인 / 거절 버튼 */}
                 {notification.type === "FOLLOW_REQUEST" && (
                     <div className="mt-2 flex space-x-2">
                         <button
@@ -109,7 +113,10 @@ export const NotificationItem: React.FC<{
                     </div>
                 )}
 
-                <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                {/* 시간 */}
+                <p className="text-xs text-gray-500 mt-1">
+                    {notification.time}
+                </p>
             </div>
         </div>
     );

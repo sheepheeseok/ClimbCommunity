@@ -9,13 +9,22 @@ export const NotificationSidebar: React.FC<{
     setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
     openPostDetailModal: (post: any) => void;
     navbarRef: React.RefObject<HTMLDivElement | null>;
-}> = ({ isOpen, onClose, notifications, setNotifications, openPostDetailModal, navbarRef }) => {
-
+}> = ({
+          isOpen,
+          onClose,
+          notifications,
+          setNotifications,
+          openPostDetailModal,
+          navbarRef,
+      }) => {
     const sidebarRef = useRef<HTMLDivElement>(null);
 
+    // ✅ 데스크탑에서만 외부 클릭 시 닫기
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
+            const isMobile = window.innerWidth < 1024;
+            if (isMobile) return; // 모바일에서는 닫히지 않음
 
             if (sidebarRef.current?.contains(target)) return;
             if (navbarRef.current?.contains(target)) return;
@@ -31,20 +40,38 @@ export const NotificationSidebar: React.FC<{
         };
     }, [isOpen, onClose, navbarRef]);
 
+    // ✅ 게시글 / 댓글 / 태그 알림 클릭 시 게시글 열기 후 닫기
     const handleNotificationClick = (n: any) => {
         if (n.type === "LIKE") {
             openPostDetailModal({ postId: n.targetId });
         } else if (n.type === "COMMENT") {
-            openPostDetailModal({ postId: n.postId, highlightCommentId: n.targetId });
+            openPostDetailModal({
+                postId: n.postId,
+                highlightCommentId: n.targetId,
+            });
         } else if (n.type === "TAGGED") {
-            // ✅ TAGGED 알림 → 해당 게시글로 이동
-            openPostDetailModal({ postId: n.targetId });
+            openPostDetailModal({
+                postId: n.targetId,
+            });
+        } else if (n.type === "FOLLOW") {
+            // ✅ 팔로우 알림 → 해당 유저 프로필로 이동
+            window.location.href = `${n.actorUserId}/profile/`;
         }
+
+        // ✅ 게시글 or 프로필 이동 후 닫기
+        onClose();
     };
 
-    // ✅ 알림 제거 핸들러 (승인/거절 시 호출됨)
+    // ✅ 닉네임 클릭 시 프로필로 이동 후 닫기
+    const handleUsernameClick = () => {
+        onClose();
+    };
+
+    // ✅ 알림 제거 (예: 팔로우 승인/거절 시)
     const handleRemoveNotification = (id: string) => {
-        setNotifications((prev) => prev.filter((n) => String(n.id) !== id));
+        setNotifications((prev) =>
+            prev.filter((n) => String(n.id) !== id)
+        );
     };
 
     return (
@@ -52,14 +79,12 @@ export const NotificationSidebar: React.FC<{
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">알림</h2>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                        ✕
-                    </button>
-                </div>
+                <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                    ✕
+                </button>
             </div>
 
             {/* Content */}
@@ -83,7 +108,8 @@ export const NotificationSidebar: React.FC<{
                                     postId: n.postId,
                                 }}
                                 onClick={handleNotificationClick}
-                                onRemove={handleRemoveNotification} // ✅ 승인/거절 후 알림 제거
+                                onUsernameClick={handleUsernameClick} // ✅ 닉네임 클릭 시 닫기
+                                onRemove={handleRemoveNotification}
                             />
                         ))}
                     </div>

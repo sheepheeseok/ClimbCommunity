@@ -39,7 +39,7 @@ public class PostController {
     private final PostService postService;
     private final UserService userService;
     private final ProgressService progressService;
-
+    private final S3Service s3Service;
     // ✅ 게시글 등록
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponseDto> createPost(
@@ -101,7 +101,7 @@ public class PostController {
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponseDto> getPost(@PathVariable Long postId) {
         Post post = postService.getPostById(postId);
-        return ResponseEntity.ok(postService.toDto(post));
+        return ResponseEntity.ok(PostResponseDto.fromEntityWithS3(post, s3Service));
     }
 
     @PatchMapping("/{postId}")

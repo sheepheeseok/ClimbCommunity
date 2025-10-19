@@ -37,6 +37,7 @@ public class AsyncVideoService {
             PostVideo postVideo = PostVideo.builder()
                     .post(savedPost)
                     .videoUrl(key)
+                    .type("video")
                     .orderIndex(order)
                     .build();
             postVideoService.save(postVideo);
