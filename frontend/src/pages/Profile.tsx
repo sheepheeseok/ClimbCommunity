@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { followService } from "@/services/followService";
 import { FollowersModal } from "@/modals/FollowersModal";
 import { useSavedPosts, useTaggedPosts } from "@/hooks/ProfileHook";
-import {useChat} from "@/data/ChatContext";
 
 
 interface Tab {
@@ -25,7 +24,7 @@ export const Profile: React.FC = () => {
     const S3_BASE_URL = "https://pj-climb-bucket.s3.ap-northeast-3.amazonaws.com/";
     const { savedPosts, loading: savedLoading } = useSavedPosts();
     const { taggedPosts, loading: taggedLoading } = useTaggedPosts();
-    const { refreshChatList } = useChat();
+
     const { profile, loading, error } = userId ? useUserProfile(userId) : useMyProfile();
     const { followers } = useFollowers(profile?.userId);
     const { following } = useFollowing(profile?.userId);
@@ -102,13 +101,10 @@ export const Profile: React.FC = () => {
 
     const handleStartChat = async () => {
         if (!userId || !myUserId) return;
-
         try {
-            // ✅ 1️⃣ 기존 채팅방 확인
             const resList = await api.get(`/api/chats/${myUserId}`);
             const existingRoom = resList.data.find(
-                (room: any) =>
-                    room.partnerId === profile.id || room.userId === profile.id
+                (room: any) => room.partnerId === profile.id || room.userId === profile.id
             );
 
             if (existingRoom) {
@@ -116,7 +112,6 @@ export const Profile: React.FC = () => {
                 return;
             }
 
-            // ✅ 2️⃣ 새 채팅방 생성
             const res = await api.post(
                 `/api/chats/room?userId1=${myUserId}&userId2=${profile.id}`
             );
@@ -130,20 +125,12 @@ export const Profile: React.FC = () => {
                 alert("채팅방 생성 실패: roomId 없음");
                 return;
             }
-
-            // ✅ 3️⃣ ChatList 즉시 새로고침
-            await refreshChatList();
-
-            // ✅ 4️⃣ 약간의 대기 후 이동 (렌더링 동기화)
-            setTimeout(() => {
-                navigate(`/messages/${roomId}`);
-            }, 150);
+            navigate(`/messages/${roomId}`);
         } catch (err) {
             console.error("❌ 채팅방 생성 실패:", err);
             alert("채팅방 생성에 실패했습니다.");
         }
     };
-
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -185,6 +172,9 @@ export const Profile: React.FC = () => {
                                         >
                                             프로필 편집
                                         </Link>
+                                        <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                                            <Settings className="w-5 h-5 text-gray-600" />
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-3">

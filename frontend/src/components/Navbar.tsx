@@ -8,18 +8,19 @@ import { BellIcon } from "@/components/icons/BellIcon";
 import { BellIconActive } from "@/components/icons/BellIconActive";
 import { AddPostIcon } from "@/components/icons/AddPostIcon";
 import { AddPostIconActive } from "@/components/icons/AddPostIconActive";
+
 import { UploadModalHook } from "@/hooks/UploadModalHook";
 import UploadModal from "@/modals/UploadModal";
-import { useState, useEffect, useRef } from "react";
+import {useState, useEffect, useRef} from "react";
 import { SearchSidebar } from "@/components/SearchSidebar";
 import { NotificationSidebar } from "@/components/NotificationSidebar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import api from "@/lib/axios";
-import { PostDetailModal } from "@/modals/PostDetailModal";
+import {PostDetailModal} from "@/modals/PostDetailModal";
 import { fetchPosts } from "@/services/postService";
 import { useChat } from "@/data/ChatContext";
+
 import { useAuth } from "@/hooks/useAuth";
-import { useUI } from "@/hooks/UIContext";
 
 export default function Navbar() {
     const location = useLocation();
@@ -27,13 +28,8 @@ export default function Navbar() {
     const { isOpen, setIsOpen } = modal;
     const navbarRef = useRef<HTMLDivElement>(null);
 
-    const {
-        isSearchOpen,
-        setIsSearchOpen,
-        isNotificationOpen,
-        setIsNotificationOpen
-    } = useUI();
-
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const storedUser = localStorage.getItem("user");
@@ -45,18 +41,15 @@ export default function Navbar() {
     const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
 
     useEffect(() => {
+        // 피드 게시물 캐시 (한 번만 불러옴)
         fetchPosts().then((data) => setPosts(data));
     }, []);
 
-    const openPostDetailModal = async ({
-                                           postId,
-                                           highlightCommentId,
-                                       }: {
-        postId: number;
-        highlightCommentId?: number;
-    }) => {
+    const openPostDetailModal = async ({ postId, highlightCommentId }: { postId: number; highlightCommentId?: number }) => {
         let post = posts.find((p) => p.id === postId);
+
         if (!post) {
+            // 피드에 없으면 API로 직접 불러오기
             try {
                 const res = await api.get(`/api/posts/${postId}`);
                 post = res.data;
@@ -65,63 +58,50 @@ export default function Navbar() {
                 return;
             }
         }
+
         setSelectedPost(post);
+        // highlightCommentId는 모달 props로 따로 넘김
         setHighlightCommentId(highlightCommentId ?? null);
     };
 
-    const { unreadRooms } = useChat();
+    const { chatList, unreadRooms, markAsRead } = useChat();
 
     useEffect(() => {
         const checkUnread = async () => {
             try {
                 const res = await api.get("/api/notifications");
                 setNotifications(res.data);
+
                 const hasUnreadNoti = res.data.some((n: any) => !n.isRead);
                 setHasUnread(hasUnreadNoti);
             } catch (err) {
                 console.error("❌ 초기 알림 불러오기 실패", err);
             }
         };
+
         checkUnread();
     }, []);
 
-    // ✅ 페이지 이동 시 자동으로 모든 탭 닫기
-    useEffect(() => {
+    const handleNotificationClick = async () => {
+        const nextOpen = !isNotificationOpen;
+        setIsNotificationOpen(nextOpen);
         setIsSearchOpen(false);
-        setIsNotificationOpen(false);
-    }, [location.pathname]);
-
-    // ✅ 탭 제어: 하나만 열리도록
-    const handleTabClick = (target: "search" | "notification" | "none") => {
-        if (target === "search") {
-            setIsSearchOpen(!isSearchOpen);
-            setIsNotificationOpen(false);
-        } else if (target === "notification") {
-            setIsNotificationOpen(!isNotificationOpen);
-            setIsSearchOpen(false);
-        } else {
-            setIsSearchOpen(false);
-            setIsNotificationOpen(false);
-        }
-    };
-
-    // ✅ 알림 버튼 핸들러
-    const handleNotificationClick = async (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        const isMobile = window.innerWidth < 1024;
-
-        if (isMobile && isNotificationOpen) return;
-
-        const nextOpen = isMobile ? true : !isNotificationOpen;
-        handleTabClick("notification");
-
         if (nextOpen) {
             try {
+                // 1. 알림 가져오기
                 const res = await api.get("/api/notifications");
+                console.log("📥 [Navbar] 알림 데이터:", res.data);
                 setNotifications(res.data);
+
+                // 2. 열자마자 전체 읽음 처리
                 await api.patch("/api/notifications/read-all");
                 setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+                // 3. 새 알림 배지 제거
                 setHasUnread(false);
+
+                // 검색 사이드바 닫기
+                if (isSearchOpen) setIsSearchOpen(false);
             } catch (err) {
                 console.error("❌ 알림 열기/읽음 처리 실패", err);
             }
@@ -130,31 +110,15 @@ export default function Navbar() {
 
     const isMessagesPage = location.pathname.startsWith("/ChatPage");
     const isMessages = location.pathname.startsWith("/messages");
-    const isAnySidebarOpen =
-        isSearchOpen || isNotificationOpen || isMessagesPage || isMessages;
+    // ✅ 사이드바 열림 여부 → Navbar width 제어
+    const isAnySidebarOpen = isSearchOpen || isNotificationOpen || isMessagesPage || isMessages;
 
     const menuItems = [
         { to: "/", label: "홈", icon: HomeIcon, activeIcon: HomeIconActive },
         { label: "검색", icon: SearchIcon, activeIcon: SearchIcon, isSearch: true },
-        {
-            to: "/ChatPage",
-            label: "메시지",
-            icon: Chatting,
-            activeIcon: ChattingActive,
-            isMessages: true,
-        },
-        {
-            label: "알림",
-            icon: BellIcon,
-            activeIcon: BellIconActive,
-            isNotification: true,
-        },
-        {
-            to: "/posts",
-            label: "기록",
-            icon: AddPostIcon,
-            activeIcon: AddPostIconActive,
-        },
+        { to: "/ChatPage", label: "메시지", icon: Chatting, activeIcon: ChattingActive, isMessages: true },
+        { label: "알림", icon: BellIcon, activeIcon: BellIconActive, isNotification: true },
+        { to: "/posts", label: "기록", icon: AddPostIcon, activeIcon: AddPostIconActive },
         { to: "/profile", label: "프로필", isProfile: true },
     ];
 
@@ -163,63 +127,57 @@ export default function Navbar() {
             {/* ✅ 데스크탑 Navbar */}
             <motion.nav
                 ref={navbarRef}
-                initial={{ width: 256 }}
-                animate={{ width: isAnySidebarOpen ? 92 : 256 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                initial={{width: 256}}
+                animate={{width: isAnySidebarOpen ? 92 : 256}}
+                transition={{type: "spring", stiffness: 300, damping: 30}}
                 className="hidden lg:fixed lg:left-0 lg:top-16 lg:h-screen
                     lg:bg-white lg:border-r lg:border-gray-200 lg:p-4 lg:flex lg:flex-col
                     z-50"
             >
                 <div className="flex flex-col h-full space-y-2 flex-1">
-                    {menuItems.map(
-                        ({
-                             to,
-                             label,
-                             icon: Icon,
-                             isSearch,
-                             isNotification,
-                             isProfile,
-                             isMessages,
-                         }) => {
+                    {menuItems.map(({to, label, icon: Icon, activeIcon: ActiveIcon, isSearch, isNotification, isProfile, isMessages}) => {
                             const isActive = location.pathname === to;
 
+                            // ✅ 검색 버튼
                             if (isSearch) {
                                 return (
                                     <button
-                                        key={label}
-                                        onClick={() => handleTabClick("search")}
+                                        key={`desktop-${label}`}
+                                        onClick={() => {
+                                            setIsSearchOpen(!isSearchOpen);
+                                            if (isNotificationOpen) setIsNotificationOpen(false);
+                                        }}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black"
                                     >
-                                        <Icon className="w-6 h-6 flex-shrink-0" />
+                                        <Icon className="w-6 h-6 flex-shrink-0"/>
                                         {!isAnySidebarOpen && <span>{label}</span>}
                                     </button>
                                 );
                             }
 
+                            // ✅ 알림 버튼
                             if (isNotification) {
                                 return (
                                     <button
-                                        key={label}
+                                        key={`desktop-${label}`}
                                         onClick={handleNotificationClick}
                                         className="flex items-center gap-3.5 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
                                     >
-                                        <Icon className="w-6 h-6 flex-shrink-0" />
+                                        <Icon className="w-6 h-6 flex-shrink-0"/>
                                         {!isAnySidebarOpen && <span>{label}</span>}
                                         {hasUnread && (
-                                            <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full" />
+                                            <span className="absolute left-8 top-2 w-2 h-2 bg-red-500 rounded-full"/>
                                         )}
                                     </button>
                                 );
                             }
 
+                            // ✅ 업로드 버튼
                             if (to === "/posts") {
                                 return (
                                     <button
-                                        key={to}
-                                        onClick={() => {
-                                            handleTabClick("none");
-                                            setIsOpen(true);
-                                        }}
+                                        key={`desktop-${to}`}
+                                        onClick={() => setIsOpen(true)}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer ${
                                             isActive
                                                 ? "text-black bg-gray-100 font-semibold"
@@ -231,34 +189,36 @@ export default function Navbar() {
                                     </button>
                                 );
                             }
-
+                            // ✅ 메시지 버튼
                             if (isMessages) {
                                 return (
                                     <Link
-                                        key={to}
+                                        key={`desktop-${to}`}
                                         to={to!}
-                                        onClick={() => handleTabClick("none")}
                                         className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-black relative"
                                     >
-                                        <Icon className="w-6 h-6 flex-shrink-0" />
+                                        {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
                                         {!isAnySidebarOpen && <span>{label}</span>}
+
+                                        {/* ✅ 안 읽은 채팅방 개수 표시 */}
                                         {unreadRooms > 0 && (
-                                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center
-                                                text-xs font-bold text-white bg-red-500 rounded-full opacity-90"
+                                            <span
+                                                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center
+                     text-xs font-bold text-white bg-red-500 rounded-full opacity-90"
                                             >
-                                                {unreadRooms}
-                                            </span>
+          {unreadRooms}
+        </span>
                                         )}
                                     </Link>
                                 );
                             }
+
 
                             if (isProfile) {
                                 return (
                                     <Link
                                         key="desktop-profile"
                                         to={to!}
-                                        onClick={() => handleTabClick("none")}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer hover:text-black ${
                                             isActive
                                                 ? "text-black bg-gray-100 font-semibold"
@@ -274,12 +234,11 @@ export default function Navbar() {
                                     </Link>
                                 );
                             }
-
+                            // ✅ 일반 메뉴
                             return (
                                 <Link
-                                    key={to}
+                                    key={`desktop-${to}`}
                                     to={to!}
-                                    onClick={() => handleTabClick("none")}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer hover:text-black ${
                                         isActive
                                             ? "text-black bg-gray-100 font-semibold"
@@ -295,68 +254,35 @@ export default function Navbar() {
                 </div>
             </motion.nav>
 
-            {/* ✅ 데스크탑용 사이드바 */}
+
+            {/* ✅ 검색 사이드바 */}
             <motion.div
-                initial={{ x: -320, opacity: 0 }}
-                animate={isSearchOpen ? { x: 92, opacity: 1 } : { x: -320, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 30 }}
-                className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)] w-80 bg-white border-r border-gray-200 shadow-md z-40"
+                initial={{x: -320, opacity: 0}}
+                animate={isSearchOpen ? {x: 92, opacity: 1} : {x: -320, opacity: 0}}
+                transition={{type: "spring", stiffness: 260, damping: 30}}
+                className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)]
+                    w-80 bg-white border-r border-gray-200 shadow-md z-40"
             >
-                <div onClick={(e) => e.stopPropagation()}>
-                    <SearchSidebar navbarRef={navbarRef} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-                </div>
+                <SearchSidebar navbarRef={navbarRef} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
             </motion.div>
 
+            {/* ✅ 알림 사이드바 */}
             <motion.div
                 initial={{ x: -320, opacity: 0 }}
                 animate={isNotificationOpen ? { x: 92, opacity: 1 } : { x: -320, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 30 }}
-                className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)] w-80 bg-white border-r border-gray-200 shadow-md z-40"
+                className="hidden lg:block fixed top-16 h-[calc(100vh-4rem)]
+                    w-80 bg-white border-r border-gray-200 shadow-md z-40"
             >
-                <div onClick={(e) => e.stopPropagation()}>
-                    <NotificationSidebar
-                        isOpen={isNotificationOpen}
-                        onClose={() => setIsNotificationOpen(false)}
-                        notifications={notifications}
-                        setNotifications={setNotifications}
-                        openPostDetailModal={openPostDetailModal}
-                        navbarRef={navbarRef}
-                    />
-                </div>
+                <NotificationSidebar
+                    isOpen={isNotificationOpen}
+                    onClose={() => setIsNotificationOpen(false)}
+                    notifications={notifications} // ✅ props로 전달
+                    setNotifications={setNotifications}
+                    openPostDetailModal={openPostDetailModal}
+                    navbarRef={navbarRef}
+                />
             </motion.div>
-
-            {/* ✅ 모바일 전체화면 오버레이 */}
-            <AnimatePresence>
-                {isSearchOpen && (
-                    <motion.div
-                        onClick={(e) => e.stopPropagation()}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed top-16 left-0 right-0 bottom-0 bg-white z-50 p-4 overflow-y-auto lg:hidden"
-                    >
-                        <SearchSidebar navbarRef={navbarRef} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-                    </motion.div>
-                )}
-                {isNotificationOpen && (
-                    <motion.div
-                        onClick={(e) => e.stopPropagation()}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed top-16 left-0 right-0 bottom-0 bg-white z-50 p-4 overflow-y-auto lg:hidden"
-                    >
-                        <NotificationSidebar
-                            isOpen={isNotificationOpen}
-                            onClose={() => setIsNotificationOpen(false)}
-                            notifications={notifications}
-                            setNotifications={setNotifications}
-                            openPostDetailModal={openPostDetailModal}
-                            navbarRef={navbarRef}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <PostDetailModal
                 isOpen={!!selectedPost}
@@ -365,92 +291,7 @@ export default function Navbar() {
                 highlightCommentId={highlightCommentId}
             />
 
-            {/* ✅ 모바일 하단바 */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-14 z-50 lg:hidden">
-                {menuItems.map(({ to, label, icon: Icon, isSearch, isNotification, isProfile, isMessages }) => {
-                    const isActive = location.pathname === to;
-                    if (isSearch)
-                        return (
-                            <button
-                                key={label}
-                                onClick={() => handleTabClick("search")}
-                                className="flex flex-col items-center justify-center text-gray-700 hover:text-black"
-                            >
-                                <Icon className="w-6 h-6" />
-                            </button>
-                        );
-                    if (isNotification)
-                        return (
-                            <button
-                                key={label}
-                                onClick={handleNotificationClick}
-                                className="relative flex flex-col items-center justify-center text-gray-700 hover:text-black"
-                            >
-                                <Icon className="w-6 h-6" />
-                                {hasUnread && <span className="absolute top-1 right-3 w-2 h-2 bg-red-500 rounded-full" />}
-                            </button>
-                        );
-                    if (to === "/posts")
-                        return (
-                            <button
-                                key={to}
-                                onClick={() => {
-                                    handleTabClick("none");
-                                    setIsOpen(true);
-                                }}
-                                className={`flex flex-col items-center justify-center ${
-                                    isActive ? "text-black" : "text-gray-700"
-                                } hover:text-black`}
-                            >
-                                {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
-                            </button>
-                        );
-                    if (isMessages)
-                        return (
-                            <Link
-                                key={to}
-                                to={to!}
-                                onClick={() => handleTabClick("none")}
-                                className="relative flex flex-col items-center justify-center text-gray-700 hover:text-black"
-                            >
-                                <Icon className="w-6 h-6" />
-                                {unreadRooms > 0 && (
-                                    <span className="absolute top-1 right-3 min-w-[16px] h-[16px] text-xs font-bold text-white bg-red-500 rounded-full flex items-center justify-center">
-                                        {unreadRooms}
-                                    </span>
-                                )}
-                            </Link>
-                        );
-                    if (isProfile)
-                        return (
-                            <Link
-                                key="mobile-profile"
-                                to={to!}
-                                onClick={() => handleTabClick("none")}
-                                className="flex flex-col items-center justify-center hover:text-black"
-                            >
-                                <img
-                                    src={currentUser?.profileImage || "https://via.placeholder.com/40"}
-                                    alt="프로필"
-                                    className="w-6 h-6 rounded-full object-cover"
-                                />
-                            </Link>
-                        );
-                    return (
-                        <Link
-                            key={to}
-                            to={to!}
-                            onClick={() => handleTabClick("none")}
-                            className={`flex flex-col items-center justify-center hover:text-black ${
-                                isActive ? "text-black" : "text-gray-700"
-                            }`}
-                        >
-                            {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
-                        </Link>
-                    );
-                })}
-            </nav>
-
+            {/* ✅ 모바일 하단바 + UploadModal */}
             <UploadModal modal={modal} />
         </>
     );
