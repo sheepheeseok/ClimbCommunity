@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "frontend/**"
+  workflow_dispatch:  # 🔘 수동 실행 버튼 추가 (Actions 탭에서 Run workflow 가능)
 
 jobs:
   deploy:
@@ -51,18 +52,20 @@ jobs:
           source: "frontend/dist/*"
           target: "/home/ubuntu/deploy/dist"
 
-      # ✅ 7. EC2에서 serve 재시작 (80포트, sudo 적용)
+      # ✅ 7. EC2에서 serve 재시작 (80포트, sudo + 안전한 종료 방식)
       - name: Restart serve on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
+          script_stop: false   # ❗ SSH 명령어 실패해도 워크플로우 중단하지 않음
           script: |
-            set +e  # 실패해도 중단하지 않음
+            set +e  # 명령 실패해도 중단하지 않음
 
             echo "🧹 기존 serve 프로세스 종료 중..."
-            sudo pkill -f "serve -s" || true
+            # 기존 프로세스 안전하게 종료 (143 방지)
+            sudo fuser -k 80/tcp || true
 
             echo "📦 새 dist 반영 중..."
             sudo rm -rf /home/ubuntu/app/dist
@@ -74,4 +77,5 @@ jobs:
 
             echo "✅ Frontend deployed and running on port 80!"
 
-            exit 0  # ✅ 항상 정상 종료 처리
+            # ✅ 항상 정상 종료 처리
+            exit 0
