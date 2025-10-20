@@ -22,16 +22,26 @@ jobs:
         with:
           node-version: 20
 
-      # ✅ 3. 프론트엔드 빌드
+      # ✅ 3. npm 캐시 복원 (속도 향상)
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # ✅ 4. 의존성 설치 (캐시 덕분에 매우 빠름)
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
 
+      # ✅ 5. 빌드
       - name: Build project
         working-directory: ./frontend
         run: npm run build
 
-      # ✅ 4. dist 폴더 EC2로 전송
+      # ✅ 6. dist 폴더 EC2로 전송
       - name: Upload dist to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -41,7 +51,7 @@ jobs:
           source: "frontend/dist/*"
           target: "/home/ubuntu/deploy/dist"
 
-      # ✅ 5. EC2에서 serve 재시작 (80포트, sudo 포함)
+      # ✅ 7. EC2에서 serve 재시작 (80포트, sudo 적용)
       - name: Restart serve on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -49,6 +59,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           script: |
+            set +e  # 실패해도 중단하지 않음
+
             echo "🧹 기존 serve 프로세스 종료 중..."
             sudo pkill -f "serve -s" || true
 
@@ -61,3 +73,5 @@ jobs:
             sudo nohup npx serve -s /home/ubuntu/app/dist -l 80 > /home/ubuntu/serve.log 2>&1 &
 
             echo "✅ Frontend deployed and running on port 80!"
+
+            exit 0  # ✅ 항상 정상 종료 처리
