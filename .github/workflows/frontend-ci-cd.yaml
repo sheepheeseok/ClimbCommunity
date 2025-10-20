@@ -41,7 +41,7 @@ jobs:
           source: "frontend/dist/*"
           target: "/home/ubuntu/deploy/dist"
 
-      # ✅ 5. EC2에서 serve 재시작 (80포트)
+      # ✅ 5. EC2에서 serve 재시작 (80포트, sudo 포함)
       - name: Restart serve on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -50,14 +50,14 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             echo "🧹 기존 serve 프로세스 종료 중..."
-            pkill -f "serve -s" || true
+            sudo pkill -f "serve -s" || true
 
             echo "📦 새 dist 반영 중..."
-            rm -rf /home/ubuntu/app/dist
-            mkdir -p /home/ubuntu/app/dist
-            cp -r /home/ubuntu/deploy/dist/* /home/ubuntu/app/dist/
+            sudo rm -rf /home/ubuntu/app/dist
+            sudo mkdir -p /home/ubuntu/app/dist
+            sudo cp -r /home/ubuntu/deploy/dist/* /home/ubuntu/app/dist/
 
             echo "🚀 serve 재시작 중 (포트 80)..."
-            nohup npx serve -s /home/ubuntu/app/dist -l 80 > /home/ubuntu/serve.log 2>&1 &
+            sudo nohup npx serve -s /home/ubuntu/app/dist -l 80 > /home/ubuntu/serve.log 2>&1 &
 
             echo "✅ Frontend deployed and running on port 80!"
