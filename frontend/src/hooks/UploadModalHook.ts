@@ -55,8 +55,7 @@ export function UploadModalHook() {
     const [isUploading, setIsUploading] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
 
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [filePreviews, setFilePreviews] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);    const [filePreviews, setFilePreviews] = useState<string[]>([]);
     const [generatedThumbnails, setGeneratedThumbnails] = useState<File[]>([]);
 
     const { setProfile } = useMyProfile();

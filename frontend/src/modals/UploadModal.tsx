@@ -35,12 +35,36 @@ export default function UploadModal({ modal }: UploadModalProps) {
     ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="glassmorphism rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-xl animate-fadeIn bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-
+        <div
+            className="
+                fixed inset-0 z-50 flex items-center justify-center
+                bg-black/50 backdrop-blur-sm
+            "
+            style={{
+                paddingTop: "max(env(safe-area-inset-top), 0.5rem)",
+                paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)",
+                height: "100dvh",
+            }}
+        >
+            <div
+                className="
+                    glassmorphism flex flex-col
+                    rounded-2xl w-full max-w-5xl
+                    h-auto
+                    max-h-[calc(100dvh-2rem)] sm:max-h-[90vh]
+                    overflow-hidden shadow-xl animate-fadeIn
+                    bg-gradient-to-br from-blue-50 via-white to-indigo-50
+                "
+                style={{
+                    paddingTop: "env(safe-area-inset-top)",
+                    paddingBottom: "env(safe-area-inset-bottom)",
+                }}
+            >
                 {/* ✅ Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/20">
-                    <h2 className="text-xl font-bold text-gray-800">새 게시물 만들기</h2>
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20 shrink-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800">
+                        새 게시물 만들기
+                    </h2>
                     <button
                         onClick={handleClose}
                         className="p-2 rounded-lg text-black transition-colors"
@@ -50,7 +74,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
                 </div>
 
                 {/* ✅ Step Indicator */}
-                <div className="px-6 py-4 border-b border-white/20">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20 shrink-0">
                     <div className="flex items-center justify-between max-w-2xl mx-auto">
                         {steps.map((step, index) => (
                             <div key={step.number} className="flex items-center">
@@ -75,7 +99,9 @@ export default function UploadModal({ modal }: UploadModalProps) {
                                 {index < steps.length - 1 && (
                                     <div
                                         className={`w-8 sm:w-12 h-0.5 mx-2 sm:mx-4 transition-colors duration-300 ${
-                                            currentStep > step.number ? "bg-blue-600" : "bg-gray-300"
+                                            currentStep > step.number
+                                                ? "bg-blue-600"
+                                                : "bg-gray-300"
                                         }`}
                                     />
                                 )}
@@ -85,7 +111,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
                 </div>
 
                 {/* ✅ Steps Content */}
-                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <div className="p-4 sm:p-6 overflow-y-auto flex-grow">
                     <AnimatePresence mode="wait">
                         {currentStep === 1 && (
                             <motion.div
@@ -136,7 +162,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
 
                 {/* ✅ Footer */}
                 {currentStep < 4 && (
-                    <div className="flex items-center justify-between p-6 border-t border-white/20">
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-t border-white/20 shrink-0">
                         <button
                             disabled={currentStep === 1}
                             onClick={() => modal.prevStep()}
@@ -147,7 +173,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
                             이전
                         </button>
                         <button
-                            disabled={!modal.isStepValid(currentStep)}  // ✅ Hook 반환값 그대로 사용 가능
+                            disabled={!modal.isStepValid(currentStep)}
                             onClick={
                                 currentStep === 3
                                     ? handleUpload

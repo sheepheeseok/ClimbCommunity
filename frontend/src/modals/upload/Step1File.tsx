@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {RefObject, useState} from "react";
 import { UploadIcon } from "@/components/icons/UploadIcons";
 import { createPortal } from "react-dom";
 import {
@@ -12,7 +12,7 @@ type Props = {
     modal: {
         selectedFiles: File[];
         setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
-        fileInputRef: React.RefObject<HTMLInputElement>;
+        fileInputRef: RefObject<HTMLInputElement | null>;
         filePreviews: string[];
         setFilePreviews: React.Dispatch<React.SetStateAction<string[]>>;
     };
