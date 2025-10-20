@@ -1,53 +1,59 @@
-name: frontend-ci-cd
+name: Deploy Frontend (serve) to EC2
 
 on:
   push:
     branches:
       - main
+    paths:
+      - "frontend/**"
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 소스코드 체크아웃
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. Node.js 설치 (Vite 빌드용)
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. 의존성 설치 및 빌드
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
+        working-directory: ./frontend
+        run: npm ci
 
-      # 4. Docker 로그인
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+      - name: Build project
+        working-directory: ./frontend
+        run: npm run build
+
+      # ✅ dist 폴더 EC2로 전송
+      - name: Upload dist to EC2
+        uses: appleboy/scp-action@v0.1.7
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          source: "frontend/dist/*"
+          target: "/home/ubuntu/dist"
 
-      # 5. Docker 이미지 빌드 및 푸시
-      - name: Build and Push Docker image
-        run: |
-          cd frontend
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/climbcommunity-frontend:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/climbcommunity-frontend:latest
+      # ✅ EC2에서 serve 프로세스 재시작
+      - name: Restart serve on EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            echo "🧹 기존 serve 프로세스 종료 중..."
+            pkill -f "serve -s" || true
 
-#      # 6. Kubernetes 배포
-#      - name: Set up Kubeconfig
-#        run: |
-#          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > kubeconfig
-#      - name: Deploy to Kubernetes
-#        run: |
-#          kubectl --kubeconfig=./kubeconfig apply -f k8s/frontend-deployment.yaml
+            echo "📦 새 빌드 반영 중..."
+            rm -rf /home/ubuntu/app/dist
+            mkdir -p /home/ubuntu/app/dist
+            cp -r /home/ubuntu/dist/* /home/ubuntu/app/dist/
+
+            echo "🚀 serve 재시작 중..."
+            nohup npx serve -s /home/ubuntu/app/dist -l 5173 > /home/ubuntu/serve.log 2>&1 &
+            echo "✅ Frontend successfully redeployed!"
