@@ -12,14 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ✅ 1. 코드 가져오기
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ✅ 2. Node 환경 세팅
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # ✅ 3. 프론트엔드 빌드
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
@@ -28,7 +31,7 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # ✅ dist 폴더 EC2로 전송
+      # ✅ 4. dist 폴더 EC2로 전송
       - name: Upload dist to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -36,9 +39,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           source: "frontend/dist/*"
-          target: "/home/ubuntu/dist"
+          target: "/home/ubuntu/deploy/dist"
 
-      # ✅ EC2에서 serve 프로세스 재시작
+      # ✅ 5. EC2에서 serve 재시작 (80포트)
       - name: Restart serve on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -49,11 +52,12 @@ jobs:
             echo "🧹 기존 serve 프로세스 종료 중..."
             pkill -f "serve -s" || true
 
-            echo "📦 새 빌드 반영 중..."
+            echo "📦 새 dist 반영 중..."
             rm -rf /home/ubuntu/app/dist
             mkdir -p /home/ubuntu/app/dist
-            cp -r /home/ubuntu/dist/* /home/ubuntu/app/dist/
+            cp -r /home/ubuntu/deploy/dist/* /home/ubuntu/app/dist/
 
-            echo "🚀 serve 재시작 중..."
-            nohup npx serve -s /home/ubuntu/app/dist -l 5173 > /home/ubuntu/serve.log 2>&1 &
-            echo "✅ Frontend successfully redeployed!"
+            echo "🚀 serve 재시작 중 (포트 80)..."
+            nohup npx serve -s /home/ubuntu/app/dist -l 80 > /home/ubuntu/serve.log 2>&1 &
+
+            echo "✅ Frontend deployed and running on port 80!"
