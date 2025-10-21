@@ -59,7 +59,7 @@ export function ChatList({ conversations, activeChat, onChatSelect }: Props) {
                         whileTap={{ scale: 0.98 }}
                     >
                         <img
-                            src={conv.profileImage}
+                            src={conv.profileImage ||  "/default-avatar.png" }
                             alt={conv.username}
                             className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                         />

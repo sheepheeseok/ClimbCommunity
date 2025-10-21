@@ -22,43 +22,32 @@ public class FeedService {
     private final S3Service s3Service; // ✅ 추가
 
     public List<PostResponseDto> getFeed(Long userId) {
-        List<Post> feedPosts = new ArrayList<>();
+        // 1️⃣ 로그인 사용자
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 없음"));
 
-        // ⚠️ 1️⃣ 로그인하지 않은 경우 (게스트)
-        if (userId == null) {
-            // 전체 공개 게시물 중 최신 또는 랜덤 5개 추천
-            List<Post> allPosts = postRepository.findAllByOrderByCreatedAtDesc();
-            Collections.shuffle(allPosts);
-            feedPosts.addAll(allPosts.stream().limit(5).collect(Collectors.toList()));
-        }
-        // ✅ 2️⃣ 로그인한 사용자일 때
-        else {
-            User currentUser = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("사용자 없음"));
+        // 2️⃣ 내가 팔로우한 유저 ID 목록
+        List<Long> followingIds = followRepository.findFolloweeIdsByFollowerId(currentUser.getId());
+        if (followingIds.isEmpty()) followingIds = List.of(-1L);
 
-            List<Long> followingIds = followRepository.findFolloweeIdsByFollowerId(currentUser.getId());
+        // 3️⃣ 팔로잉 유저 게시물 (최신순 3개)
+        List<Post> followingPosts = postRepository.findTop3ByUserIdInOrderByCreatedAtDesc(followingIds);
 
-            if (followingIds.isEmpty()) {
-                // ⚠️ 팔로잉이 없으면 → 비팔로우 유저 게시물 5개
-                List<Post> otherPosts = postRepository.findRecommendedPostsExcluding(List.of(-1L), currentUser.getId());
-                Collections.shuffle(otherPosts);
-                feedPosts.addAll(otherPosts.stream().limit(5).collect(Collectors.toList()));
-            } else {
-                // ✅ 팔로잉 게시물 3개
-                List<Post> followingPosts = postRepository.findTop3ByUserIdInOrderByCreatedAtDesc(followingIds);
-                feedPosts.addAll(followingPosts);
+        // 4️⃣ 팔로우 안 한 유저의 게시물
+        List<Post> otherPosts = postRepository.findRecommendedPostsExcluding(followingIds, currentUser.getId());
 
-                // ✅ 비팔로우 게시물 중 랜덤 2개
-                List<Post> otherPosts = postRepository.findRecommendedPostsExcluding(followingIds, currentUser.getId());
-                Collections.shuffle(otherPosts);
-                feedPosts.addAll(otherPosts.stream().limit(2).collect(Collectors.toList()));
-            }
-        }
+        // 5️⃣ 랜덤 5개 중 2개 선택
+        Collections.shuffle(otherPosts);
+        List<Post> randomPosts = otherPosts.stream().limit(2).collect(Collectors.toList());
 
-        // ✅ S3 URL 포함 변환
-        return feedPosts.stream()
+        // 6️⃣ 피드 병합
+        List<Post> merged = new ArrayList<>();
+        merged.addAll(followingPosts);
+        merged.addAll(randomPosts);
+
+        // 7️⃣ S3 URL 포함 변환
+        return merged.stream()
                 .map(post -> PostResponseDto.fromEntityWithS3(post, s3Service))
                 .collect(Collectors.toList());
     }
-
 }

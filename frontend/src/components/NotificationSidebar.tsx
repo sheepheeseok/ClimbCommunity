@@ -46,6 +46,7 @@ export const NotificationSidebar: React.FC<{
 
     // ✅ 게시글 / 댓글 / 태그 알림 클릭 시 게시글 열기 후 닫기
     const handleNotificationClick = (n: any) => {
+        console.log("🧩 알림 클릭됨:", n);
         if (n.type === "LIKE") {
             openPostDetailModal({ postId: n.targetId });
         } else if (n.type === "COMMENT") {

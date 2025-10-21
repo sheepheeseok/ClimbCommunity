@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import {useState, useRef, useEffect} from "react";
 import { Smile, Paperclip, Send } from "@/components/icons/ChatIcons";
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 export function ChatInput({ onSend, onTyping, onFileSend }: Props) {
     const [newMessage, setNewMessage] = useState("");
     const typingTimeout = useRef<number | null>(null);
+    const [bottomOffset, setBottomOffset] = useState(0);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();

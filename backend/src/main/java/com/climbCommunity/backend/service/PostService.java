@@ -82,9 +82,11 @@ public class PostService {
                 .mediaList(
                         Stream.concat(
                                         post.getImages().stream()
-                                                .map(img -> new MediaDto("image", s3Service.getFileUrl(img.getImageUrl()), img.getOrderIndex())),
+                                                .map(img -> new MediaDto(
+                                                        s3Service.getFileUrl(img.getImageUrl()), "image", img.getOrderIndex())),
                                         post.getVideos().stream()
-                                                .map(video -> new MediaDto("video", s3Service.getFileUrl(video.getVideoUrl()), video.getOrderIndex()))
+                                                .map(video -> new MediaDto(
+                                                        s3Service.getFileUrl(video.getVideoUrl()),"video", video.getOrderIndex()))
                                 )
                                 .sorted(Comparator.comparingInt(MediaDto::getOrderIndex)) // ✅ orderIndex 순 정렬
                                 .toList()

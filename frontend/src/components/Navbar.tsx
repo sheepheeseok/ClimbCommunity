@@ -60,6 +60,9 @@ export default function Navbar() {
             try {
                 const res = await api.get(`/api/posts/${postId}`);
                 post = res.data;
+
+                console.log("🧩 [DEBUG] 단일 게시글 데이터:", post);
+                console.log("🧩 [DEBUG] mediaList:", post.mediaList);
             } catch (err) {
                 console.error("❌ 게시글 불러오기 실패:", err);
                 return;
@@ -266,7 +269,7 @@ export default function Navbar() {
                                         }`}
                                     >
                                         <img
-                                            src={currentUser?.profileImage || "https://via.placeholder.com/40"}
+                                            src={currentUser?.profileImage || "/default-avatar.png"}
                                             alt="프로필"
                                             className="w-7 h-7 rounded-full object-cover"
                                         />

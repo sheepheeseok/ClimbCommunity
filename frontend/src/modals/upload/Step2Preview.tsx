@@ -67,9 +67,10 @@ export default function Step2Preview({ modal }: Props) {
 
     const [placeQuery, setPlaceQuery] = useState("");
     const [placeResults, setPlaceResults] = useState<any[]>([]);
+    const [isPlaceSelected, setIsPlaceSelected] = useState(false);
 
     useEffect(() => {
-        if (placeQuery.trim().length < 1) {
+        if (isPlaceSelected || placeQuery.trim().length < 1) {
             setPlaceResults([]);
             return;
         }
@@ -81,16 +82,22 @@ export default function Step2Preview({ modal }: Props) {
         }, 300);
 
         return () => clearTimeout(delay);
-    }, [placeQuery]);
+    }, [placeQuery, isPlaceSelected]);
 
     const handleSelectPlace = (place: any) => {
-        const cleanTitle = place.title.replace(/<[^>]+>/g, ""); // <b> 제거
+        const cleanTitle = place.title.replace(/<[^>]+>/g, "");
         setFormData((prev: any) => ({
             ...prev,
-            location: cleanTitle,
+            location: cleanTitle, // ✅ 실제 선택 장소 저장
         }));
-        setPlaceQuery(cleanTitle);
+        setPlaceQuery(""); // ✅ 입력창은 비움
+        setIsPlaceSelected(true);
         setPlaceResults([]);
+    };
+
+    const handlePlaceInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPlaceQuery(e.target.value);
+        setIsPlaceSelected(false);
     };
 
     const difficultyColors = [
@@ -146,9 +153,9 @@ export default function Step2Preview({ modal }: Props) {
                             </div>
                             <input
                                 type="text"
-                                value={placeQuery || formData.location}
-                                onChange={(e) => setPlaceQuery(e.target.value)}
-                                placeholder="클라이밍장 이름을 입력하세요"
+                                value={placeQuery}
+                                onChange={handlePlaceInputChange}
+                                placeholder={formData.location || "클라이밍장 이름을 입력하세요"}
                                 className="w-full pl-10 pr-4 py-3 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
 
@@ -183,7 +190,7 @@ export default function Step2Preview({ modal }: Props) {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="@사용자 검색"
+                            placeholder="사용자 검색"
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
 
