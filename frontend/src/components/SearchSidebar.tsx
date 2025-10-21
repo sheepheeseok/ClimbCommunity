@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import api from "@/lib/axios";
 import { useProfileNavigation } from "@/hooks/useProfileNavigation";
 
-// ✅ 최근 검색 항목 타입
 interface RecentSearch {
     id: number;
     userId: string;
@@ -10,12 +9,11 @@ interface RecentSearch {
     avatar: string;
 }
 
-// ✅ 검색 API 응답 타입
 interface UserResult {
     id: number;
     userId: string;
     username: string;
-    profileImage: string;
+    profileImage: string | null;
 }
 
 const SearchIcon: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -63,43 +61,51 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                                                 onClose,
                                                                 navbarRef,
                                                             }) => {
+    const sidebarRef = useRef<HTMLDivElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [results, setResults] = useState<UserResult[]>([]);
     const [loading, setLoading] = useState(false);
-    const sidebarRef = useRef<HTMLDivElement>(null);
-    const { goToProfile } = useProfileNavigation(); // ✅ 훅 사용
+    const { goToProfile } = useProfileNavigation();
 
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => {
-        const saved = localStorage.getItem("recentSearches");
-        return saved ? JSON.parse(saved) : [];
+        try {
+            const saved = localStorage.getItem("recentSearches");
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
     });
 
-    // ✅ localStorage 저장
+    // ✅ localStorage 동기화
     useEffect(() => {
         localStorage.setItem("recentSearches", JSON.stringify(recentSearches));
     }, [recentSearches]);
 
     // ✅ 바깥 클릭 감지
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const isMobile = window.innerWidth < 1024; // ✅ 모바일 감지
-            if (isMobile) return; // 모바일에서는 닫히지 않게 차단
+        let allowClose = false;
+        const timer = setTimeout(() => {
+            allowClose = true;
+        }, 300); // 렌더 후 0.3초간 외부 클릭 무시
 
-            const target = event.target as Node;
-            if (sidebarRef.current?.contains(target)) return;
-            if (navbarRef.current?.contains(target)) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!allowClose) return; // 👈 이 줄이 핵심
+
+            if (!(event.target instanceof Node)) return;
+            const sidebar = sidebarRef.current;
+            const navbar = navbarRef.current;
+            if (sidebar?.contains(event.target) || navbar?.contains(event.target)) return;
             onClose();
         };
 
-        if (isOpen) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
+        if (isOpen) document.addEventListener("click", handleClickOutside, false);
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
+            clearTimeout(timer);
+            document.removeEventListener("click", handleClickOutside, false);
         };
     }, [isOpen, onClose, navbarRef]);
 
-    // ✅ 검색 API 호출 (debounce)
+    // ✅ 검색 API 호출 (디바운스)
     useEffect(() => {
         if (!searchQuery.trim()) {
             setResults([]);
@@ -123,7 +129,6 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
         return () => clearTimeout(timeout);
     }, [searchQuery]);
 
-    // ✅ 최근 검색 추가
     const handleSelectUser = (user: UserResult) => {
         setRecentSearches((prev) => {
             const filtered = prev.filter((item) => item.id !== user.id);
@@ -132,7 +137,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                     id: user.id,
                     userId: user.userId,
                     username: user.username,
-                    avatar: user.profileImage,
+                    avatar: user.profileImage || "/default-avatar.png",
                 },
                 ...filtered,
             ];
@@ -142,14 +147,23 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
         setResults([]);
     };
 
-    const removeSearchItem = (id: number) => {
-        setRecentSearches(recentSearches.filter((item) => item.id !== id));
-    };
+    const removeSearchItem = (id: number) =>
+        setRecentSearches((prev) => prev.filter((item) => item.id !== id));
 
     const clearAllSearches = () => setRecentSearches([]);
 
+    const isMobile = window.innerWidth < 1024;
+
     return (
-        <div ref={sidebarRef} className="p-6 h-full flex flex-col">
+        <div
+            ref={sidebarRef}
+            onClick={(e) => e.stopPropagation()}
+            className={`${
+                isMobile
+                    ? "fixed inset-0 bg-white z-[9999] p-6 overflow-y-auto"
+                    : "p-6 h-full flex flex-col"
+            }`}
+        >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">검색</h2>
@@ -188,14 +202,14 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                 <div
                                     key={user.id}
                                     onClick={(e) => {
-                                        handleSelectUser(user); // ✅ 최근검색 추가
-                                        goToProfile(e, user.userId); // ✅ 프로필 이동
-                                        onClose(); // ✅ 닫기
+                                        handleSelectUser(user);
+                                        goToProfile(e, user.userId);
+                                        onClose();
                                     }}
                                     className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                                 >
                                     <img
-                                        src={user.profileImage}
+                                        src={user.profileImage || "/default-avatar.png"}
                                         alt={user.username}
                                         className="w-10 h-10 rounded-full object-cover"
                                     />
@@ -211,9 +225,10 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                     )
                 ) : (
                     <>
-                        {/* Recent Header */}
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">최근 검색 항목</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                최근 검색 항목
+                            </h3>
                             {recentSearches.length > 0 && (
                                 <button
                                     onClick={clearAllSearches}
@@ -223,7 +238,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                 </button>
                             )}
                         </div>
-                        {/* Recent List */}
+
                         {recentSearches.length === 0 ? (
                             <div className="text-center py-8">
                                 <SearchIcon className="text-gray-300 mx-auto mb-3" />
@@ -235,7 +250,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                     <div
                                         key={item.id}
                                         onClick={(e) => {
-                                            goToProfile(e, item.userId); // ✅ 통일
+                                            goToProfile(e, item.userId);
                                             onClose();
                                         }}
                                         className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer"
@@ -243,7 +258,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                         <div className="flex items-center space-x-3 flex-1">
                                             <div className="w-10 h-10 rounded-full overflow-hidden">
                                                 <img
-                                                    src={item.avatar}
+                                                    src={item.avatar || "/default-avatar.png"}
                                                     alt={item.username}
                                                     className="w-full h-full object-cover"
                                                 />
@@ -259,7 +274,7 @@ export const SearchSidebar: React.FC<SearchSidebarProps> = ({
                                         </div>
                                         <button
                                             onClick={(e) => {
-                                                e.stopPropagation(); // 프로필 이동 막고 삭제만
+                                                e.stopPropagation();
                                                 removeSearchItem(item.id);
                                             }}
                                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded-full transition-all"

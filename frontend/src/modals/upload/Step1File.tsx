@@ -1,4 +1,4 @@
-import {RefObject, useState} from "react";
+import { RefObject, useState } from "react";
 import { UploadIcon } from "@/components/icons/UploadIcons";
 import { createPortal } from "react-dom";
 import {
@@ -35,23 +35,22 @@ export default function Step1File({ modal }: Props) {
             const files = Array.from(e.target.files);
             addFiles(files);
         }
-        // 같은 파일 다시 선택 가능하도록 초기화
         e.target.value = "";
     };
 
-    /** ✅ Drag & Drop / Input 공통 처리 */
-    const addFiles = (files: File[]) => {
+    /** ✅ 공통 파일 처리 */
+    const addFiles = async (files: File[]) => {
         const validFiles = files.filter(
             (file) => file.type.startsWith("image/") || file.type.startsWith("video/")
         );
         if (validFiles.length === 0) return;
 
-        // 중복 제거
         const uniqueFiles = validFiles.filter(
             (newFile) =>
                 !selectedFiles.some(
                     (existingFile) =>
-                        existingFile.name === newFile.name && existingFile.size === newFile.size
+                        existingFile.name === newFile.name &&
+                        existingFile.size === newFile.size
                 )
         );
 
@@ -59,32 +58,82 @@ export default function Step1File({ modal }: Props) {
             showToast("이미 선택된 파일은 제외되었습니다.");
         }
 
+        const newPreviews: string[] = [];
+
+        for (const file of uniqueFiles) {
+            if (file.type === "video/quicktime" || file.name.toLowerCase().endsWith(".mov")) {
+                try {
+                    const thumb = await generateThumbnailSafe(file);
+                    newPreviews.push(thumb);
+                } catch {
+                    showToast(".mov 썸네일을 생성할 수 없습니다.");
+                    newPreviews.push(""); // fallback
+                }
+            } else {
+                newPreviews.push(URL.createObjectURL(file));
+            }
+        }
+
         setSelectedFiles((prev) => [...prev, ...uniqueFiles]);
-        const newPreviews = uniqueFiles.map((file) => URL.createObjectURL(file));
         setFilePreviews((prev) => [...prev, ...newPreviews]);
     };
 
-    /** ✅ 프리뷰 순서 변경 */
+    /** ✅ MOV 안전 썸네일 생성 */
+    const generateThumbnailSafe = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement("video");
+            video.src = URL.createObjectURL(file);
+            video.crossOrigin = "anonymous";
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = "auto";
+
+            let resolved = false;
+
+            video.addEventListener("loadedmetadata", () => {
+                // metadata 로드 완료 후 0.5초 프레임으로 이동
+                if (video.duration < 0.5) return reject("Too short");
+                video.currentTime = Math.min(0.5, video.duration / 2);
+            });
+
+            video.addEventListener("seeked", () => {
+                if (resolved) return;
+                resolved = true;
+
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return reject("Canvas error");
+
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/png"));
+            });
+
+            video.onerror = () => reject("Video load error");
+
+            // timeout fallback (10초 내 생성 안되면 실패 처리)
+            setTimeout(() => {
+                if (!resolved) reject("Timeout");
+            }, 10000);
+        });
+    };
+
+    /** ✅ 순서 변경 */
     const handleDragEnd = (result: DropResult) => {
         if (!result.destination) return;
-
-        const { source, destination } = result;
-
-        // files 재정렬
         const newFiles = Array.from(selectedFiles);
-        const [movedFile] = newFiles.splice(source.index, 1);
-        newFiles.splice(destination.index, 0, movedFile);
+        const [movedFile] = newFiles.splice(result.source.index, 1);
+        newFiles.splice(result.destination.index, 0, movedFile);
 
-        // previews 재정렬
         const newPreviews = Array.from(filePreviews);
-        const [movedPreview] = newPreviews.splice(source.index, 1);
-        newPreviews.splice(destination.index, 0, movedPreview);
+        const [movedPreview] = newPreviews.splice(result.source.index, 1);
+        newPreviews.splice(result.destination.index, 0, movedPreview);
 
         setSelectedFiles(newFiles);
         setFilePreviews(newPreviews);
     };
 
-    /** ✅ 토스트 띄우기 */
     const showToast = (message: string) => {
         setToastMsg(message);
         setTimeout(() => setToastMsg(""), 2000);
@@ -92,13 +141,12 @@ export default function Step1File({ modal }: Props) {
 
     return (
         <div className="animate-slideIn relative">
-            {/* ✅ Toast 메시지 */}
             {toastMsg &&
                 createPortal(
                     <div
                         className="fixed top-32 left-1/2 transform -translate-x-1/2
-             bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg
-             z-[9999] animate-fadeIn"
+                            bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg
+                            z-[9999] animate-fadeIn"
                     >
                         {toastMsg}
                     </div>,
@@ -108,12 +156,11 @@ export default function Step1File({ modal }: Props) {
             {/* 업로드 영역 */}
             <div
                 className="border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300
-          hover:border-blue-500 hover:shadow-lg"
+                    hover:border-blue-500 hover:shadow-lg"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                     e.preventDefault();
-                    const files = Array.from(e.dataTransfer.files);
-                    addFiles(files);
+                    addFiles(Array.from(e.dataTransfer.files));
                 }}
             >
                 <UploadIcon />
@@ -139,84 +186,111 @@ export default function Step1File({ modal }: Props) {
                 />
             </div>
 
-            {/* 파일 프리뷰 */}
+            {/* ✅ 미리보기 */}
             {filePreviews.length > 0 && (
                 <div className="mt-6">
                     <h4 className="text-lg font-semibold mb-4 text-gray-800">
                         선택된 파일
                     </h4>
-                    <DragDropContext onDragEnd={handleDragEnd}>
-                        <Droppable droppableId="files" direction="horizontal">
-                            {(provided) => (
-                                <div
-                                    className="grid grid-cols-2 md:grid-cols-4 gap-4"
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                >
-                                    {filePreviews.map((url, index) => {
-                                        const file = selectedFiles[index];
-                                        if (!file) return null;
-                                        const isImage = file.type.startsWith("image/");
 
-                                        return (
-                                            <Draggable
-                                                key={file.name + index}
-                                                draggableId={file.name + index}
-                                                index={index}
-                                            >
-                                                {(provided) => (
-                                                    <div
-                                                        className="relative group bg-white/70 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                    >
-                                                        <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                                            {isImage ? (
-                                                                <img
-                                                                    src={url}
-                                                                    alt={`Preview ${index}`}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            ) : (
-                                                                <video
-                                                                    src={url}
-                                                                    className="w-full h-full object-cover"
-                                                                    muted
-                                                                />
-                                                            )}
-                                                        </div>
-                                                        {/* 삭제 버튼 */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedFiles((prev) =>
-                                                                    prev.filter((_, i) => i !== index)
-                                                                );
-                                                                setFilePreviews((prev) =>
-                                                                    prev.filter((_, i) => i !== index)
-                                                                );
-                                                                if (fileInputRef.current) {
-                                                                    fileInputRef.current.value = "";
-                                                                }
-                                                            }}
-                                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full
-                                flex items-center justify-center text-xl font-normal transition-colors duration-200 shadow-md"
+                    <div
+                        className="max-h-[50vh] overflow-y-auto pr-2
+                            rounded-lg border border-gray-100
+                            bg-white/50 backdrop-blur-sm"
+                    >
+                        <DragDropContext onDragEnd={handleDragEnd}>
+                            <Droppable droppableId="files" direction="horizontal">
+                                {(provided) => (
+                                    <div
+                                        className="grid grid-cols-2 md:grid-cols-4 gap-4 p-2"
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                    >
+                                        {filePreviews.map((url, index) => {
+                                            const file = selectedFiles[index];
+                                            if (!file) return null;
+                                            const isImage = file.type.startsWith("image/");
+                                            const isMov =
+                                                file.type === "video/quicktime" ||
+                                                file.name.toLowerCase().endsWith(".mov");
+
+                                            return (
+                                                <Draggable
+                                                    key={file.name + index}
+                                                    draggableId={file.name + index}
+                                                    index={index}
+                                                >
+                                                    {(provided) => (
+                                                        <div
+                                                            className="relative group bg-white/70 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
                                                         >
-                                                            ×
-                                                        </button>
-                                                        <p className="text-xs text-gray-600 mt-1 truncate px-1">
-                                                            {file.name}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        );
-                                    })}
-                                    {provided.placeholder}
-                                </div>
-                            )}
-                        </Droppable>
-                    </DragDropContext>
+                                                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                                                                {url ? (
+                                                                    isImage || isMov ? (
+                                                                        <img
+                                                                            src={url}
+                                                                            alt={`Preview ${index}`}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <video
+                                                                            src={url}
+                                                                            className="w-full h-full object-cover"
+                                                                            muted
+                                                                            playsInline
+                                                                            onLoadedData={(e) => {
+                                                                                const v =
+                                                                                    e.currentTarget;
+                                                                                v.currentTime = 0;
+                                                                                v.play().catch(() => {});
+                                                                            }}
+                                                                        />
+                                                                    )
+                                                                ) : (
+                                                                    <div className="text-gray-400 text-sm">
+                                                                        MOV 미리보기 불가
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedFiles((prev) =>
+                                                                        prev.filter(
+                                                                            (_, i) => i !== index
+                                                                        )
+                                                                    );
+                                                                    setFilePreviews((prev) =>
+                                                                        prev.filter(
+                                                                            (_, i) => i !== index
+                                                                        )
+                                                                    );
+                                                                    if (fileInputRef.current)
+                                                                        fileInputRef.current.value =
+                                                                            "";
+                                                                }}
+                                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xl shadow-md"
+                                                            >
+                                                                ×
+                                                            </button>
+
+                                                            <p className="text-xs text-gray-600 mt-1 truncate px-1">
+                                                                {file.name}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            );
+                                        })}
+                                        {provided.placeholder}
+                                    </div>
+                                )}
+                            </Droppable>
+                        </DragDropContext>
+                    </div>
                 </div>
             )}
         </div>

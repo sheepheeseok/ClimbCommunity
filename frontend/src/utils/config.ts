@@ -1,5 +1,5 @@
 // src/config.ts
-const BASE_IP = "56.155.121.176";
+const BASE_IP = "15.152.32.196";
 const PORT = "8080";
 
 export const API_BASE_URL = `http://${BASE_IP}:${PORT}`;

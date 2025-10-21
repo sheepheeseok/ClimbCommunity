@@ -54,34 +54,29 @@ export default function SignUp() {
                     }}
                     className="space-y-5"
                 >
-                {/* 아이디 */}
+                    {/* 아이디 */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            아이디
-                        </label>
-                        <div className="flex space-x-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">아이디</label>
+                        <div className="flex flex-wrap gap-2">
                             <input
                                 type="text"
                                 name="userId"
                                 value={form.userId}
                                 onChange={handleChange}
                                 placeholder="아이디를 입력하세요"
-                                className="flex-1 px-4 py-3 border text-black border-gray-200 rounded-xl
-                 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                className="flex-1 min-w-[150px] px-4 py-3 border text-black border-gray-200 rounded-xl
+        focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                             />
                             <button
                                 type="button"
                                 onClick={() => checkDuplicate("userId", form.userId)} // ✅ 버튼 클릭 시만 API 실행
                                 className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg
-                 hover:bg-indigo-700 transition-colors"
+        hover:bg-indigo-700 transition-colors flex-shrink-0"
                             >
                                 중복확인
                             </button>
                         </div>
-
-                        {errors.userId && (
-                            <p className="text-red-500 text-xs mt-1">{errors.userId}</p>
-                        )}
+                        {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
                     </div>
 
 
@@ -145,13 +140,10 @@ export default function SignUp() {
 
                     {/* 이메일 */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            이메일
-                        </label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">이메일</label>
 
                         {!isCustomEmail ? (
-                            // 일반 모드
-                            <div className="flex items-center space-x-2">
+                            <div className="flex flex-wrap gap-2">
                                 {/* local part */}
                                 <input
                                     type="text"
@@ -159,26 +151,24 @@ export default function SignUp() {
                                     value={form.emailLocal}
                                     onChange={handleChange}
                                     placeholder="이메일 아이디"
-                                    className="w-1/2 px-4 py-3 text-black border border-gray-200 rounded-xl
-                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                    className="w-1/2 min-w-[120px] px-4 py-3 text-black border border-gray-200 rounded-xl
+          focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none flex-1"
                                 />
 
                                 <span className="text-gray-500">@</span>
 
-                                {/* select */}
+                                {/* domain select */}
                                 <select
                                     name="emailDomain"
                                     value={form.emailDomain}
                                     onChange={(e) => {
                                         if (e.target.value === "custom") {
                                             setIsCustomEmail(true);
-                                            setForm((prev) => ({ ...prev, customEmail: "" })); // 초기화
-                                        } else {
-                                            handleChange(e);
-                                        }
+                                            setForm((prev) => ({ ...prev, customEmail: "" }));
+                                        } else handleChange(e);
                                     }}
-                                    className="w-1/2 px-4 py-3 text-black border border-gray-200 rounded-xl
-                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                    className="w-1/2 min-w-[120px] px-4 py-3 text-black border border-gray-200 rounded-xl
+          focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none flex-1"
                                 >
                                     {emailDomains.map((domain) => (
                                         <option key={domain} value={domain}>
@@ -187,32 +177,59 @@ export default function SignUp() {
                                     ))}
                                     <option value="custom">직접 입력</option>
                                 </select>
+
+                                {/* ✅ 이메일 중복확인 버튼 */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const email =
+                                            isCustomEmail && form.customEmail
+                                                ? form.customEmail
+                                                : `${form.emailLocal}@${form.emailDomain}`;
+                                        checkDuplicate("email", email);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg
+          hover:bg-indigo-700 transition-colors flex-shrink-0"
+                                >
+                                    중복확인
+                                </button>
                             </div>
                         ) : (
-                            // 커스텀 모드
-                            <div className="flex items-center space-x-2">
+                            <div className="flex flex-wrap gap-2">
                                 <input
                                     type="text"
                                     name="customEmail"
                                     value={form.customEmail}
                                     onChange={handleChange}
                                     placeholder="이메일 전체 주소 입력"
-                                    className="w-full px-4 py-3 text-black border border-gray-200 rounded-xl
-                           focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                    className="flex-1 min-w-[180px] px-4 py-3 text-black border border-gray-200 rounded-xl
+          focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setIsCustomEmail(false)} // 다시 일반 모드로
+                                    onClick={() => setIsCustomEmail(false)}
                                     className="px-2 text-nowrap py-3.5 bg-gray-200 text-sm rounded-lg hover:bg-gray-300"
                                 >
                                     취소
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const email =
+                                            isCustomEmail && form.customEmail
+                                                ? form.customEmail
+                                                : `${form.emailLocal}@${form.emailDomain}`;
+                                        checkDuplicate("email", email);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg
+          hover:bg-indigo-700 transition-colors flex-shrink-0"
+                                >
+                                    중복확인
+                                </button>
                             </div>
                         )}
 
-                        {errors.email && (
-                            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-                        )}
+                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                     </div>
 
 
@@ -287,10 +304,19 @@ export default function SignUp() {
                             value={form.birthdate}
                             onChange={handleChange}
                             max={new Date().toISOString().split("T")[0]} // 오늘 이후 선택 불가
-                            className="w-full px-4 py-3 border text-black border-gray-200 rounded-xl
-               focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            onFocus={(e) => e.target.showPicker?.()} // ✅ 모바일에서 달력 강제 표시
+                            className="w-full border text-black border-gray-200 rounded-xl
+      focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none
+      px-4 py-2.5 sm:py-3 bg-white text-sm sm:text-base appearance-none
+      [&::-webkit-calendar-picker-indicator]:cursor-pointer
+      [&::-webkit-calendar-picker-indicator]:opacity-70
+      [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                         />
+                        <p className="text-gray-400 text-xs mt-1 sm:text-sm">
+                            선택 시 자동으로 달력이 표시되지 않는다면 입력란을 다시 한 번 탭하세요.
+                        </p>
                     </div>
+
 
                     {/* 회원가입 버튼 */}
                     <button

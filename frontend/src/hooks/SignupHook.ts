@@ -55,29 +55,48 @@ export function SignupHook() {
     const validateUserId = (id: string) => userIdRegex.test(id);
     const validatePassword = (pw: string) => passwordRegex.test(pw);
 
-    // ✅ 아이디/닉네임 중복체크
-    const checkDuplicate = async (type: "userId" | "username", value: string) => {
+    // ✅ 아이디/닉네임/이메일 중복체크
+    const checkDuplicate = async (
+        type: "userId" | "username" | "email",
+        value: string
+    ) => {
+        if (!value) {
+            alert(`${type === "email" ? "이메일" : type} 값을 입력해주세요.`);
+            return;
+        }
+
         try {
+            // 공통 엔드포인트를 쓰거나, 필요 시 각자 분기 가능
             const res = await api.get("/api/auth/check-duplicate", {
                 params: { [type]: value },
             });
 
-            if (res.data[type]) {
-                setErrors((prev) => ({
-                    ...prev,
-                    [type]: `이미 사용 중인 ${type === "userId" ? "아이디" : "닉네임"}입니다.`,
-                }));
-            } else {
-                setErrors((prev) => ({
-                    ...prev,
-                    [type]: `사용 가능한 ${type === "userId" ? "아이디" : "닉네임"}입니다.`,
-                }));
-            }
+            const isDuplicate = res.data[type];
+
+            setErrors((prev) => ({
+                ...prev,
+                [type]:
+                    isDuplicate
+                        ? `이미 사용 중인 ${type === "userId"
+                            ? "아이디"
+                            : type === "username"
+                                ? "닉네임"
+                                : "이메일"}입니다.`
+                        : `사용 가능한 ${type === "userId"
+                            ? "아이디"
+                            : type === "username"
+                                ? "닉네임"
+                                : "이메일"}입니다.`,
+            }));
         } catch (err) {
             console.error("❌ 중복 확인 에러:", err);
             setErrors((prev) => ({
                 ...prev,
-                [type]: `${type === "userId" ? "아이디" : "닉네임"} 중복 확인 실패`,
+                [type]: `${type === "userId"
+                    ? "아이디"
+                    : type === "username"
+                        ? "닉네임"
+                        : "이메일"} 중복 확인 실패`,
             }));
         }
     };

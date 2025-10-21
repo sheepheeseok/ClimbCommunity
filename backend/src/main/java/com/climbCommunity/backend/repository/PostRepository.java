@@ -42,4 +42,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             "LEFT JOIN FETCH p.videos " +
             "WHERE p.id = :postId")
     Optional<Post> findByIdWithMedia(@Param("postId") Long postId);
+
+
+    // ✅ 전체 게시물 (최신순)
+    List<Post> findAllByOrderByCreatedAtDesc();   // ← 이 메서드 추가!
 }

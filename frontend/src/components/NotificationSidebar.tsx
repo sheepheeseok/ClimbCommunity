@@ -19,24 +19,28 @@ export const NotificationSidebar: React.FC<{
       }) => {
     const sidebarRef = useRef<HTMLDivElement>(null);
 
-    // ✅ 데스크탑에서만 외부 클릭 시 닫기
+    // ✅ 바깥 클릭 감지
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as Node;
-            const isMobile = window.innerWidth < 1024;
-            if (isMobile) return; // 모바일에서는 닫히지 않음
+            if (!(event.target instanceof Node)) return;
 
-            if (sidebarRef.current?.contains(target)) return;
-            if (navbarRef.current?.contains(target)) return;
+            const sidebar = sidebarRef.current;
+            const navbar = navbarRef.current;
 
+            // ✅ 사이드바나 네비바 내부 클릭 시 닫지 않음
+            if (sidebar && sidebar.contains(event.target)) return;
+            if (navbar && navbar.contains(event.target)) return;
+
+            // ✅ 바깥 클릭 시에만 닫기
             onClose();
         };
 
         if (isOpen) {
-            document.addEventListener("mousedown", handleClickOutside);
+            // ✅ mousedown 대신 click 이벤트 사용 (propagation 후 실행)
+            document.addEventListener("click", handleClickOutside);
         }
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("click", handleClickOutside);
         };
     }, [isOpen, onClose, navbarRef]);
 
@@ -75,7 +79,7 @@ export const NotificationSidebar: React.FC<{
     };
 
     return (
-        <div ref={sidebarRef} className="p-6 h-full flex flex-col">
+        <div ref={sidebarRef} onClick={(e) => e.stopPropagation()} className="p-6 h-full flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">알림</h2>

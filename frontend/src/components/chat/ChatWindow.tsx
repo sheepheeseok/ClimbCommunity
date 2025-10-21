@@ -18,6 +18,8 @@ export function ChatWindow({ activeChat, myUserId, markAsRead }: Props) {
         activeChat.partnerId
     );
 
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
     useEffect(() => {
         if (!messagesEndRef.current || !activeChat) return;
 
@@ -28,25 +30,19 @@ export function ChatWindow({ activeChat, myUserId, markAsRead }: Props) {
         });
 
         observer.observe(messagesEndRef.current);
-
         return () => observer.disconnect();
     }, [messages, activeChat, markAsRead]);
-
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!messagesEndRef.current) return;
 
         if (messages.length === 0) {
-            // 📌 메시지가 없으면 최상단으로
             const parent = messagesEndRef.current.parentElement;
             if (parent) parent.scrollTop = 0;
         } else {
-            // 📌 마지막 메시지로 스무스하게 이동
             messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
         }
     }, [messages, typingUser]);
-
 
     if (!activeChat) {
         return (
@@ -82,22 +78,21 @@ export function ChatWindow({ activeChat, myUserId, markAsRead }: Props) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-16">
-                {/* 🔥 여기서 pb-28 (padding-bottom) 추가 */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-4 bg-gray-50">
                 {messages.map((msg, idx) => (
-                    <MessageBubble key={idx} message={msg} myUserId={myUserId}/>
+                    <MessageBubble key={idx} message={msg} myUserId={myUserId} />
                 ))}
 
                 {typingUser && (
                     <div className="flex justify-start mt-2">
-                        <TypingBubble/>
+                        <TypingBubble />
                     </div>
                 )}
 
-                <div ref={messagesEndRef} className="pb-16"/>
+                <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
+            {/* ✅ ChatInput: safe-area-padding 적용된 버전 */}
             <ChatInput
                 onSend={(msg) => sendMessage(msg, "CHAT")}
                 onTyping={sendTyping}

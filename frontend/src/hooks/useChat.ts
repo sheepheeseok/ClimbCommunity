@@ -17,13 +17,13 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
     const [typingUser, setTypingUser] = useState<number | null>(null);
     const clientRef = useRef<Client | null>(null);
 
-    // ✅ roomId가 바뀌면 메시지 초기화
+    // ✅ roomId 변경 시 초기화
     useEffect(() => {
         setMessages([]);
         setTypingUser(null);
     }, [roomId]);
 
-    // ✅ 초기 메시지 로딩
+    // ✅ 초기 메시지 로드
     useEffect(() => {
         if (!roomId) return;
         const fetchMessages = async () => {
@@ -31,13 +31,13 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
                 const res = await api.get<ChatMessage[]>(`/api/chats/${roomId}/messages`);
                 setMessages(res.data);
             } catch (err) {
-                console.error("메시지 불러오기 실패:", err);
+                console.error("❌ 메시지 불러오기 실패:", err);
             }
         };
         fetchMessages();
     }, [roomId]);
 
-    // ✅ WebSocket 연결
+    // ✅ WebSocket 연결 설정
     useEffect(() => {
         if (!roomId || !myUserId) return;
 
@@ -53,15 +53,18 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
         client.onConnect = () => {
             console.log("✅ WebSocket 연결 성공:", roomId);
 
+            // ✅ 메시지 구독
             client.subscribe(`/topic/chat/${roomId}`, (frame: IMessage) => {
                 const msg: ChatMessage = JSON.parse(frame.body);
 
                 if (msg.type === "TYPING") {
+                    // 다른 사용자의 입력중 표시
                     if (msg.senderId !== myUserId) {
                         setTypingUser(msg.senderId);
                         setTimeout(() => setTypingUser(null), 2000);
                     }
                 } else {
+                    // 일반 메시지 수신
                     setTypingUser(null);
                     setMessages((prev) => [...prev, msg]);
                 }
@@ -69,7 +72,7 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
         };
 
         client.onStompError = (frame) => {
-            console.error("❌ STOMP error:", frame.headers["message"], frame.body);
+            console.error("❌ STOMP Error:", frame.headers["message"], frame.body);
         };
 
         client.activate();
@@ -83,7 +86,7 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
         };
     }, [roomId, myUserId]);
 
-    // ✅ 메시지 전송
+    // ✅ 메시지 전송 (서버 브로드캐스트만 반영)
     const sendMessage = (
         content: string,
         type: "CHAT" | "IMAGE" | "VIDEO" = "CHAT"
@@ -102,20 +105,14 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
             body: JSON.stringify(message),
         });
 
-        // 낙관적 업데이트 (보내자마자 바로 반영)
-        if (type === "CHAT") {
-            setMessages((prev) => [
-                ...prev,
-                { ...message, createdAt: new Date().toISOString() },
-            ]);
-        }
+        // ❌ 로컬 state 추가 없음 (중복 방지)
     };
 
     // ✅ 입력중 이벤트 전송
     const sendTyping = () => {
         if (!clientRef.current || !clientRef.current.connected) return;
 
-        const message: ChatMessage = {
+        const typingMessage: ChatMessage = {
             type: "TYPING",
             roomId,
             senderId: myUserId,
@@ -124,11 +121,11 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
 
         clientRef.current.publish({
             destination: "/app/chat.typing",
-            body: JSON.stringify(message),
+            body: JSON.stringify(typingMessage),
         });
     };
 
-    // ✅ 파일 업로드 → 메시지 전송
+    // ✅ 파일 업로드 + 메시지 전송
     const sendFile = async (file: File) => {
         const formData = new FormData();
         formData.append("file", file);
@@ -138,13 +135,17 @@ export function useChat(roomId: number, myUserId: number, partnerId?: number) {
             formData.append("partnerId", partnerId.toString());
         }
 
-        const res = await api.post("/api/chat/upload", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-        });
+        try {
+            const res = await api.post("/api/chat/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
 
-        const fileUrl = res.data;
-        const type = file.type.startsWith("video/") ? "VIDEO" : "IMAGE";
-        sendMessage(fileUrl, type);
+            const fileUrl = res.data;
+            const type = file.type.startsWith("video/") ? "VIDEO" : "IMAGE";
+            sendMessage(fileUrl, type);
+        } catch (err) {
+            console.error("❌ 파일 업로드 실패:", err);
+        }
     };
 
     return {

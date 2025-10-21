@@ -333,9 +333,13 @@ export default function Navbar() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed top-16 left-0 right-0 bottom-0 bg-white z-50 p-4 overflow-y-auto lg:hidden"
+                        className="fixed inset-0 bg-white z-50 overflow-y-auto lg:hidden"
                     >
-                        <SearchSidebar navbarRef={navbarRef} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+                        <SearchSidebar
+                            navbarRef={navbarRef}
+                            isOpen={isSearchOpen}
+                            onClose={() => setIsSearchOpen(false)}
+                        />
                     </motion.div>
                 )}
                 {isNotificationOpen && (

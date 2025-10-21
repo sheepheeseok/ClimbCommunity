@@ -145,4 +145,8 @@ public class AuthService {
     public boolean isUsernameTaken(String username) {
         return userRepository.existsByUsername(username);
     }
+
+    public boolean isEmailTaken(String email) {
+        return userRepository.existsByEmail(email);
+    }
 }

@@ -15,7 +15,6 @@ export default function UploadModal({ modal }: UploadModalProps) {
         isOpen,
         setIsOpen,
         currentStep,
-        setCurrentStep,
         resetModal,
         handleUpload,
     } = modal;
@@ -37,44 +36,41 @@ export default function UploadModal({ modal }: UploadModalProps) {
     return (
         <div
             className="
-                fixed inset-0 z-50 flex items-center justify-center
-                bg-black/50 backdrop-blur-sm
+                fixed inset-0 z-50 bg-black/50 backdrop-blur-sm
+                overflow-y-auto
             "
+            // ✅ safe-area + 모바일 대응
             style={{
-                paddingTop: "max(env(safe-area-inset-top), 0.5rem)",
-                paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)",
-                height: "100dvh",
+                paddingTop: "max(env(safe-area-inset-top), 1rem)",
+                paddingBottom: "max(env(safe-area-inset-bottom), 1rem)",
             }}
         >
+            {/* ✅ 모달 본체 */}
             <div
                 className="
-                    glassmorphism flex flex-col
-                    rounded-2xl w-full max-w-5xl
-                    h-auto
-                    max-h-[calc(100dvh-2rem)] sm:max-h-[90vh]
-                    overflow-hidden shadow-xl animate-fadeIn
+                    flex flex-col mx-auto my-8
+                    w-full max-w-5xl
                     bg-gradient-to-br from-blue-50 via-white to-indigo-50
+                    rounded-2xl shadow-xl animate-fadeIn
+                    overflow-hidden
+                    min-h-[80vh]
                 "
-                style={{
-                    paddingTop: "env(safe-area-inset-top)",
-                    paddingBottom: "env(safe-area-inset-bottom)",
-                }}
             >
                 {/* ✅ Header */}
-                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20 shrink-0">
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20 bg-white/60 backdrop-blur-sm sticky top-0 z-20">
                     <h2 className="text-lg sm:text-xl font-bold text-gray-800">
                         새 게시물 만들기
                     </h2>
                     <button
                         onClick={handleClose}
-                        className="p-2 rounded-lg text-black transition-colors"
+                        className="p-2 rounded-lg text-black hover:bg-gray-100 transition-colors"
                     >
                         <CloseIcon />
                     </button>
                 </div>
 
                 {/* ✅ Step Indicator */}
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20 shrink-0">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20 bg-white/50 sticky top-[4rem] z-10">
                     <div className="flex items-center justify-between max-w-2xl mx-auto">
                         {steps.map((step, index) => (
                             <div key={step.number} className="flex items-center">
@@ -111,7 +107,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
                 </div>
 
                 {/* ✅ Steps Content */}
-                <div className="p-4 sm:p-6 overflow-y-auto flex-grow">
+                <div className="p-4 sm:p-6 flex-grow">
                     <AnimatePresence mode="wait">
                         {currentStep === 1 && (
                             <motion.div
@@ -162,7 +158,7 @@ export default function UploadModal({ modal }: UploadModalProps) {
 
                 {/* ✅ Footer */}
                 {currentStep < 4 && (
-                    <div className="flex items-center justify-between p-4 sm:p-6 border-t border-white/20 shrink-0">
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-t border-white/20 bg-white/60 backdrop-blur-sm sticky bottom-0 z-20">
                         <button
                             disabled={currentStep === 1}
                             onClick={() => modal.prevStep()}

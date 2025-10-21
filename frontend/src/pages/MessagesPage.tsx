@@ -1,4 +1,3 @@
-// src/pages/MessagesPage.tsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ChatList } from "@/components/chat/ChatList";
@@ -9,11 +8,19 @@ import { ChatPreview } from "@/hooks/useChatList";
 import api from "@/lib/axios";
 
 export function MessagesPage() {
-    const { id: myUserId } = useAuth();   // 로그인 유저 PK
+    const { id: myUserId } = useAuth(); // 로그인 유저 PK
     const { roomId } = useParams<{ roomId?: string }>(); // ✅ URL 파라미터
     const { chatList, markAsRead } = useChat();
     const [activeChat, setActiveChat] = useState<ChatPreview | null>(null);
+    const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
     const navigate = useNavigate();
+
+    // ✅ iOS Safari 대응: vh 대신 실제 window.innerHeight 사용
+    useEffect(() => {
+        const handleResize = () => setViewportHeight(window.innerHeight);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // ✅ body 스크롤 막기
     useEffect(() => {
@@ -23,32 +30,23 @@ export function MessagesPage() {
         };
     }, []);
 
-
     useEffect(() => {
-        // ✅ roomId가 없으면 activeChat 초기화
         if (!roomId) {
             setActiveChat(null);
             return;
         }
-
-        // ✅ chatList가 아직 로드 중이면 대기
         if (!chatList || chatList.length === 0) return;
 
-        // ✅ 로드 완료 시 roomId 매칭
         const chat = chatList.find((c: ChatPreview) => String(c.roomId) === roomId);
 
         if (chat) {
             setActiveChat(chat);
         } else {
-            // ✅ fallback: 서버에서 직접 방 정보 가져오기
             (async () => {
                 try {
                     const res = await api.get(`/api/chats/${roomId}`);
-                    if (res.data) {
-                        setActiveChat(res.data);
-                    }
-                } catch (err) {
-                    console.warn(`채팅방(${roomId})을 불러올 수 없습니다.`);
+                    if (res.data) setActiveChat(res.data);
+                } catch {
                     navigate("/messages", { replace: true });
                 }
             })();
@@ -60,9 +58,13 @@ export function MessagesPage() {
     }, [roomId]);
 
     return (
-        <div className="flex h-screen"> {/* ✅ 전체 고정, 내부만 스크롤 */}
-
-            {/* ✅ ChatList: 좌측 고정, 내부 스크롤 */}
+        <div
+            className="flex flex-col md:flex-row w-full bg-white"
+            style={{
+                height: viewportHeight, // ✅ iOS Safari 대응
+            }}
+        >
+            {/* ✅ ChatList: 모바일에서는 숨기기 */}
             <div
                 className={`${
                     roomId ? "hidden md:flex" : "flex"
@@ -79,8 +81,8 @@ export function MessagesPage() {
                 />
             </div>
 
-            {/* ✅ ChatWindow: 내부 스크롤 */}
-            <div className="flex-1 flex flex-col">
+            {/* ✅ ChatWindow */}
+            <div className="flex-1 flex flex-col min-h-0">
                 {activeChat ? (
                     <ChatWindow
                         activeChat={activeChat}

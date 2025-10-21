@@ -135,6 +135,9 @@ public class PostService {
         if (!post.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("게시글 삭제 권한이 없습니다.");
         }
+
+        postLikeRepository.deleteByPost(post);
+
         commentRepository.deleteByPost(post);
         // ✅ DB 삭제 (cascade로 연관 엔티티 자동 삭제)
         postRepository.delete(post);

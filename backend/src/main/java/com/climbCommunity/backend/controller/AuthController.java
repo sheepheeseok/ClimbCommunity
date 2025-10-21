@@ -108,10 +108,12 @@ public class AuthController {
     @GetMapping("/check-duplicate")
     public ResponseEntity<Map<String, Boolean>> checkDuplicate(
             @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String username) {
-
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email
+    ) {
         boolean isUserIdDuplicate = false;
         boolean isUsernameDuplicate = false;
+        boolean isEmailDuplicate = false;
 
         if (userId != null && !userId.isBlank()) {
             isUserIdDuplicate = authService.isUserIdTaken(userId);
@@ -121,9 +123,15 @@ public class AuthController {
             isUsernameDuplicate = authService.isUsernameTaken(username);
         }
 
-        return ResponseEntity.ok(Map.of(
-                "userId", isUserIdDuplicate,
-                "username", isUsernameDuplicate
-        ));
+        if (email != null && !email.isBlank()) {
+            isEmailDuplicate = authService.isEmailTaken(email); // ✅ 추가
+        }
+
+        Map<String, Boolean> result = new HashMap<>();
+        result.put("userId", isUserIdDuplicate);
+        result.put("username", isUsernameDuplicate);
+        result.put("email", isEmailDuplicate);
+
+        return ResponseEntity.ok(result);
     }
 }
